@@ -10,12 +10,12 @@ import (
 	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/tooldiscovery/index"
 	"github.com/jonwraymond/toolexec/run"
-	"github.com/jonwraymond/toolexec/runtime"
+	runt "github.com/jonwraymond/toolexec/runtime"
 	"github.com/jonwraymond/toolexec/runtime/backend/unsafe"
 	"github.com/jonwraymond/toolexec/runtime/toolcodeengine"
 )
 
-func newEngine(t *testing.T, runtime runtime.Runtime, profile runtime.SecurityProfile) *toolcodeengine.Engine {
+func newEngine(t *testing.T, runtime runt.Runtime, profile runt.SecurityProfile) *toolcodeengine.Engine {
 	t.Helper()
 	engine, err := toolcodeengine.New(toolcodeengine.Config{
 		Runtime: runtime,
@@ -74,15 +74,15 @@ func TestFullStackExecution(t *testing.T) {
 	})
 
 	// Create a runtime with the backend
-	runtime := runtime.NewDefaultRuntime(runtime.RuntimeConfig{
-		Backends: map[runtime.SecurityProfile]runtime.Backend{
-			runtime.ProfileDev: backend,
+	runtime := runt.NewDefaultRuntime(runt.RuntimeConfig{
+		Backends: map[runt.SecurityProfile]runt.Backend{
+			runt.ProfileDev: backend,
 		},
-		DefaultProfile: runtime.ProfileDev,
+		DefaultProfile: runt.ProfileDev,
 	})
 
 	// Create the toolcode engine adapter
-	engine := newEngine(t, runtime, runtime.ProfileDev)
+	engine := newEngine(t, runtime, runt.ProfileDev)
 
 	// Verify Engine implements code.Engine
 	var _ code.Engine = engine
@@ -124,14 +124,14 @@ func TestErrorMappingIntegration(t *testing.T) {
 	// Create a mock backend that returns specific errors
 	mockBackend := &errorBackend{}
 
-	runtime := runtime.NewDefaultRuntime(runtime.RuntimeConfig{
-		Backends: map[runtime.SecurityProfile]runtime.Backend{
-			runtime.ProfileDev: mockBackend,
+	runtime := runt.NewDefaultRuntime(runt.RuntimeConfig{
+		Backends: map[runt.SecurityProfile]runt.Backend{
+			runt.ProfileDev: mockBackend,
 		},
-		DefaultProfile: runtime.ProfileDev,
+		DefaultProfile: runt.ProfileDev,
 	})
 
-	engine := newEngine(t, runtime, runtime.ProfileDev)
+	engine := newEngine(t, runtime, runt.ProfileDev)
 
 	tools := &testTools{}
 	ctx := context.Background()
@@ -140,7 +140,7 @@ func TestErrorMappingIntegration(t *testing.T) {
 	}
 
 	t.Run("timeout maps to ErrLimitExceeded", func(t *testing.T) {
-		mockBackend.err = runtime.ErrTimeout
+		mockBackend.err = runt.ErrTimeout
 		_, err := engine.Execute(ctx, params, tools)
 		if !errors.Is(err, code.ErrLimitExceeded) {
 			t.Errorf("timeout should map to ErrLimitExceeded, got: %v", err)
@@ -148,7 +148,7 @@ func TestErrorMappingIntegration(t *testing.T) {
 	})
 
 	t.Run("resource limit maps to ErrLimitExceeded", func(t *testing.T) {
-		mockBackend.err = runtime.ErrResourceLimit
+		mockBackend.err = runt.ErrResourceLimit
 		_, err := engine.Execute(ctx, params, tools)
 		if !errors.Is(err, code.ErrLimitExceeded) {
 			t.Errorf("resource limit should map to ErrLimitExceeded, got: %v", err)
@@ -156,7 +156,7 @@ func TestErrorMappingIntegration(t *testing.T) {
 	})
 
 	t.Run("sandbox violation maps to ErrCodeExecution", func(t *testing.T) {
-		mockBackend.err = runtime.ErrSandboxViolation
+		mockBackend.err = runt.ErrSandboxViolation
 		_, err := engine.Execute(ctx, params, tools)
 		if !errors.Is(err, code.ErrCodeExecution) {
 			t.Errorf("sandbox violation should map to ErrCodeExecution, got: %v", err)
@@ -169,15 +169,15 @@ type errorBackend struct {
 	err error
 }
 
-func (b *errorBackend) Kind() runtime.BackendKind {
-	return runtime.BackendUnsafeHost
+func (b *errorBackend) Kind() runt.BackendKind {
+	return runt.BackendUnsafeHost
 }
 
-func (b *errorBackend) Execute(_ context.Context, _ runtime.ExecuteRequest) (runtime.ExecuteResult, error) {
+func (b *errorBackend) Execute(_ context.Context, _ runt.ExecuteRequest) (runt.ExecuteResult, error) {
 	if b.err != nil {
-		return runtime.ExecuteResult{}, b.err
+		return runt.ExecuteResult{}, b.err
 	}
-	return runtime.ExecuteResult{
+	return runt.ExecuteResult{
 		Value: "test",
 	}, nil
 }
@@ -187,14 +187,14 @@ func TestGatewayWrappingIntegration(t *testing.T) {
 	// Create a mock backend that captures the request
 	mockBackend := &capturingBackend{}
 
-	runtime := runtime.NewDefaultRuntime(runtime.RuntimeConfig{
-		Backends: map[runtime.SecurityProfile]runtime.Backend{
-			runtime.ProfileDev: mockBackend,
+	runtime := runt.NewDefaultRuntime(runt.RuntimeConfig{
+		Backends: map[runt.SecurityProfile]runt.Backend{
+			runt.ProfileDev: mockBackend,
 		},
-		DefaultProfile: runtime.ProfileDev,
+		DefaultProfile: runt.ProfileDev,
 	})
 
-	engine := newEngine(t, runtime, runtime.ProfileDev)
+	engine := newEngine(t, runtime, runt.ProfileDev)
 
 	tools := &testTools{
 		searchResults: []index.Summary{
@@ -238,30 +238,30 @@ func TestGatewayWrappingIntegration(t *testing.T) {
 
 // capturingBackend captures the ExecuteRequest for inspection
 type capturingBackend struct {
-	capturedReq runtime.ExecuteRequest
+	capturedReq runt.ExecuteRequest
 }
 
-func (b *capturingBackend) Kind() runtime.BackendKind {
-	return runtime.BackendUnsafeHost
+func (b *capturingBackend) Kind() runt.BackendKind {
+	return runt.BackendUnsafeHost
 }
 
-func (b *capturingBackend) Execute(_ context.Context, req runtime.ExecuteRequest) (runtime.ExecuteResult, error) {
+func (b *capturingBackend) Execute(_ context.Context, req runt.ExecuteRequest) (runt.ExecuteResult, error) {
 	b.capturedReq = req
-	return runtime.ExecuteResult{}, nil
+	return runt.ExecuteResult{}, nil
 }
 
 // TestProfilePropagation tests that security profiles are correctly propagated
 func TestProfilePropagation(t *testing.T) {
 	mockBackend := &capturingBackend{}
 
-	runtime := runtime.NewDefaultRuntime(runtime.RuntimeConfig{
-		Backends: map[runtime.SecurityProfile]runtime.Backend{
-			runtime.ProfileStandard: mockBackend,
+	runtime := runt.NewDefaultRuntime(runt.RuntimeConfig{
+		Backends: map[runt.SecurityProfile]runt.Backend{
+			runt.ProfileStandard: mockBackend,
 		},
-		DefaultProfile: runtime.ProfileStandard,
+		DefaultProfile: runt.ProfileStandard,
 	})
 
-	engine := newEngine(t, runtime, runtime.ProfileStandard)
+	engine := newEngine(t, runtime, runt.ProfileStandard)
 
 	tools := &testTools{}
 	ctx := context.Background()
@@ -271,9 +271,9 @@ func TestProfilePropagation(t *testing.T) {
 
 	_, _ = engine.Execute(ctx, params, tools)
 
-	if mockBackend.capturedReq.Profile != runtime.ProfileStandard {
+	if mockBackend.capturedReq.Profile != runt.ProfileStandard {
 		t.Errorf("Profile = %v, want %v",
-			mockBackend.capturedReq.Profile, runtime.ProfileStandard)
+			mockBackend.capturedReq.Profile, runt.ProfileStandard)
 	}
 }
 
@@ -281,14 +281,14 @@ func TestProfilePropagation(t *testing.T) {
 func TestLimitsPropagation(t *testing.T) {
 	mockBackend := &capturingBackend{}
 
-	runtime := runtime.NewDefaultRuntime(runtime.RuntimeConfig{
-		Backends: map[runtime.SecurityProfile]runtime.Backend{
-			runtime.ProfileDev: mockBackend,
+	runtime := runt.NewDefaultRuntime(runt.RuntimeConfig{
+		Backends: map[runt.SecurityProfile]runt.Backend{
+			runt.ProfileDev: mockBackend,
 		},
-		DefaultProfile: runtime.ProfileDev,
+		DefaultProfile: runt.ProfileDev,
 	})
 
-	engine := newEngine(t, runtime, runtime.ProfileDev)
+	engine := newEngine(t, runtime, runt.ProfileDev)
 
 	tools := &testTools{}
 	ctx := context.Background()
