@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/tooldiscovery/index"
+	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/toolexec/run"
 	"github.com/jonwraymond/toolexec/runtime"
 )
@@ -99,9 +99,9 @@ func TestBackendProfileRestrictions(t *testing.T) {
 	b := New(Config{})
 
 	tests := []struct {
-		profile         runtime.SecurityProfile
-		expectNetwork   bool
-		expectReadOnly  bool
+		profile        runtime.SecurityProfile
+		expectNetwork  bool
+		expectReadOnly bool
 	}{
 		{runtime.ProfileStandard, false, true},
 		{runtime.ProfileHardened, false, true},

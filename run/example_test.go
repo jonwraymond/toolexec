@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/jonwraymond/toolexec/run"
+	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

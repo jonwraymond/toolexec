@@ -80,11 +80,11 @@ func (c *mockConnection) SetResponse(id string, resp Message) {
 
 // autoRespondConnection automatically responds to requests
 type autoRespondConnection struct {
-	mu         sync.Mutex
-	messages   []Message
-	responder  func(Message) Message
-	closed     bool
-	gateway    *Gateway
+	mu        sync.Mutex
+	messages  []Message
+	responder func(Message) Message
+	closed    bool
+	gateway   *Gateway
 }
 
 func newAutoRespondConnection(responder func(Message) Message) *autoRespondConnection {

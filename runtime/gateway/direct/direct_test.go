@@ -6,11 +6,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/tooldiscovery/index"
-	"github.com/jonwraymond/toolfoundation/model"
+	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/toolexec/run"
 	"github.com/jonwraymond/toolexec/runtime"
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // mockIndex implements index.Index for testing

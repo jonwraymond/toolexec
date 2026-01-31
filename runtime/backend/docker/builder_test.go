@@ -311,14 +311,14 @@ func TestSpecBuilderChaining(t *testing.T) {
 		WithEnvs([]string{"BAZ=qux"}).
 		WithBindMount("/host", "/container", true).
 		WithTmpfs("/tmp").
-		WithMemory(256 * 1024 * 1024).
+		WithMemory(256*1024*1024).
 		WithCPU(100000).
 		WithPidsLimit(100).
 		WithUser("nobody:nogroup").
 		WithReadOnlyRootfs(true).
 		WithNoNetwork().
 		WithSeccompProfile("/path/to/profile").
-		WithTimeout(30 * time.Second).
+		WithTimeout(30*time.Second).
 		WithLabel("app", "test").
 		WithLabels(map[string]string{"env": "dev"}).
 		Build()

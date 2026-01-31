@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jonwraymond/toolexec/code"
-	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/tooldiscovery/index"
+	"github.com/jonwraymond/tooldiscovery/tooldoc"
+	"github.com/jonwraymond/toolexec/code"
 	"github.com/jonwraymond/toolexec/run"
 	"github.com/jonwraymond/toolexec/runtime"
 )

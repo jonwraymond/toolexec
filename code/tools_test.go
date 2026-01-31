@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/tooldiscovery/index"
-	"github.com/jonwraymond/toolfoundation/model"
+	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/toolexec/run"
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 type customStruct struct {

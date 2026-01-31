@@ -7,14 +7,14 @@ import "context"
 // and sequential chain execution.
 //
 // Contract:
-// - Concurrency: implementations must be safe for concurrent use.
-// - Context: must honor cancellation/deadlines and return ctx.Err() when canceled.
-// - Errors: failures should be wrapped with ToolError; callers use errors.Is
-//   to match ErrInvalidToolID, ErrToolNotFound, ErrValidation, ErrExecution,
-//   ErrOutputValidation, and ErrStreamNotSupported.
-// - Ownership: args are treated as read-only; results are caller-owned snapshots.
-// - Determinism: for identical inputs/backends, results should be stable.
-// - Nil/zero: empty toolID must return ErrInvalidToolID; nil args treated as empty.
+//   - Concurrency: implementations must be safe for concurrent use.
+//   - Context: must honor cancellation/deadlines and return ctx.Err() when canceled.
+//   - Errors: failures should be wrapped with ToolError; callers use errors.Is
+//     to match ErrInvalidToolID, ErrToolNotFound, ErrValidation, ErrExecution,
+//     ErrOutputValidation, and ErrStreamNotSupported.
+//   - Ownership: args are treated as read-only; results are caller-owned snapshots.
+//   - Determinism: for identical inputs/backends, results should be stable.
+//   - Nil/zero: empty toolID must return ErrInvalidToolID; nil args treated as empty.
 type Runner interface {
 	// Run executes a single tool and returns the normalized result.
 	// It resolves the tool, validates input, executes via the appropriate backend,

@@ -11,11 +11,11 @@ import (
 // based on the security profile.
 //
 // Contract:
-// - Concurrency: implementations must be safe for concurrent use.
-// - Context: must honor cancellation/deadlines and return ctx.Err() when canceled.
-// - Errors: request validation should return ErrMissingGateway/ErrInvalidRequest;
-//   backend selection failures return ErrRuntimeUnavailable/ErrBackendDenied.
-// - Ownership: requests are read-only; results are caller-owned snapshots.
+//   - Concurrency: implementations must be safe for concurrent use.
+//   - Context: must honor cancellation/deadlines and return ctx.Err() when canceled.
+//   - Errors: request validation should return ErrMissingGateway/ErrInvalidRequest;
+//     backend selection failures return ErrRuntimeUnavailable/ErrBackendDenied.
+//   - Ownership: requests are read-only; results are caller-owned snapshots.
 type Runtime interface {
 	// Execute runs code with the given request parameters.
 	// It selects the appropriate backend based on the security profile

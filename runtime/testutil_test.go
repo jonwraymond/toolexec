@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/tooldiscovery/index"
+	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/toolexec/run"
 )
 

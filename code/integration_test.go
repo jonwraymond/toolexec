@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/jonwraymond/toolexec/run"
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // Integration tests verify end-to-end behavior of the toolcode package.

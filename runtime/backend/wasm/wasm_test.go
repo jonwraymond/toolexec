@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/tooldiscovery/index"
+	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/toolexec/run"
 	"github.com/jonwraymond/toolexec/runtime"
 )
@@ -263,6 +263,6 @@ func (m *mockHealthChecker) Info(_ context.Context) (RuntimeInfo, error) {
 
 // Interface compliance checks
 var (
-	_ Runner    = (*mockWasmRunner)(nil)
+	_ Runner        = (*mockWasmRunner)(nil)
 	_ HealthChecker = (*mockHealthChecker)(nil)
 )
