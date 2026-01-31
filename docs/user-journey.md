@@ -113,22 +113,43 @@ result, err := executor.Execute(ctx, `
 ## 7. Runtime Isolation (Sandbox)
 
 ```go
-import "github.com/jonwraymond/toolexec/runtime"
+import (
+  "github.com/jonwraymond/tooldiscovery/tooldoc"
+  "github.com/jonwraymond/toolexec/runtime"
+  "github.com/jonwraymond/toolexec/runtime/backend/unsafe"
+  "github.com/jonwraymond/toolexec/runtime/gateway/direct"
+)
 
-// Create Docker runtime for untrusted code
-rt := runtime.NewDockerRuntime(runtime.DockerConfig{
-  Image:   "toolruntime-sandbox:latest",
-  Timeout: 30 * time.Second,
-  Memory:  "256m",
-  CPUs:    "0.5",
+// Docs store (used by the gateway)
+docs := tooldoc.NewInMemoryStore(tooldoc.StoreOptions{Index: idx})
+
+// Gateway exposes tool discovery + execution to sandboxed code
+gateway := direct.New(direct.Config{
+  Index:  idx,
+  Docs:   docs,
+  Runner: runner,
 })
 
-// Execute with isolation
-result, err := rt.Execute(ctx, tool, args)
+// Runtime with a dev backend (no isolation, explicit opt-in required)
+rt := runtime.NewDefaultRuntime(runtime.RuntimeConfig{
+  Backends: map[runtime.SecurityProfile]runtime.Backend{
+    runtime.ProfileDev: unsafe.New(unsafe.Config{RequireOptIn: true}),
+  },
+  DefaultProfile: runtime.ProfileDev,
+})
 
-// Clean up
-defer rt.Cleanup()
+// Execute code in the runtime
+result, err := rt.Execute(ctx, runtime.ExecuteRequest{
+  Language: "go",
+  Code:     `__out = 1 + 1`,
+  Profile:  runtime.ProfileDev,
+  Gateway:  gateway,
+  Metadata: map[string]any{"unsafeOptIn": true},
+})
 ```
+
+For container isolation, register `runtime/backend/docker` (requires a
+`docker.ContainerRunner`) and set `ProfileStandard` or `ProfileHardened`.
 
 ## Execution Flow
 

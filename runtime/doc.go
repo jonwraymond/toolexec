@@ -1,4 +1,4 @@
-// Package toolruntime provides execution runtime and isolation boundaries for
+// Package runtime provides execution runtime and isolation boundaries for
 // code-oriented orchestration. It sits underneath toolcode and provides:
 //
 //   - Backend-agnostic runtime interface for executing code in sandboxed environments

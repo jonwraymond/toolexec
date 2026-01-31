@@ -3,7 +3,7 @@ module github.com/jonwraymond/toolexec
 go 1.24.4
 
 require (
-	github.com/jonwraymond/tooldiscovery v0.0.0-20260131044009-da18a6d00b96
+	github.com/jonwraymond/tooldiscovery v0.1.0
 	github.com/jonwraymond/toolfoundation v0.1.0
 	github.com/modelcontextprotocol/go-sdk v1.2.0
 )

@@ -40,8 +40,8 @@ It handles tool execution, code orchestration, and runtime isolation.
 2. **Runner Integration**: Delegates actual tool execution to the `run`
    package, ensuring consistent validation and error handling.
 
-3. **Build Tag Gating**: Code execution requires the `toolruntime` build tag
-   to enable sandbox support.
+3. **Runtime Integration**: Code execution can be isolated by wiring a
+   `runtime.Runtime` via the `runtime/toolcodeengine` adapter.
 
 ## runtime Package
 
@@ -51,20 +51,47 @@ It handles tool execution, code orchestration, and runtime isolation.
    interface supporting Execute and Cleanup operations.
 
 2. **Security Profiles**:
-   - `dev`: Unsafe subprocess execution (local development)
-   - `standard`: Docker-based isolation (production)
-   - `wasm`: WASM sandbox via wazero (edge/browser)
+   - `ProfileDev`: Unsafe host execution (development only)
+   - `ProfileStandard`: Container-based isolation
+   - `ProfileHardened`: Maximum isolation (seccomp + VM/VM-like backends)
 
 3. **Resource Limits**: Configurable CPU, memory, and timeout limits for
    sandboxed execution.
+4. **Gateway Requirement**: Every execution request must include a
+   `ToolGateway` to broker tool discovery/execution for sandboxed code.
 
 ### Supported Runtimes
 
 | Runtime | Isolation | Performance | Use Case |
 |---------|-----------|-------------|----------|
-| Local | None | Fast | Trusted tools |
+| Unsafe host | None | Fast | Trusted/dev |
 | Docker | Container | Medium | Production |
 | WASM | Sandbox | Varies | Edge/browser |
+
+### Runtime Backend Matrix
+
+| BackendKind | Isolation | Requirements | Notes |
+|-------------|-----------|--------------|-------|
+| `BackendUnsafeHost` | None | Go toolchain (subprocess mode) | Dev-only, explicit opt-in supported |
+| `BackendDocker` | Container | Docker daemon + ContainerRunner | Standard isolation |
+| `BackendContainerd` | Container | containerd client | Infrastructure-native |
+| `BackendKubernetes` | Pod/Job | kubeconfig/client | Cluster execution |
+| `BackendGVisor` | Sandbox | gVisor/runsc | Stronger isolation |
+| `BackendKata` | VM | Kata runtime | VM-level isolation |
+| `BackendFirecracker` | MicroVM | Firecracker runtime | Strongest isolation |
+| `BackendWASM` | Sandbox | wazero | In-process WASM |
+| `BackendTemporal` | Workflow | Temporal client | Orchestrated execution |
+| `BackendRemote` | Remote | HTTP/gRPC service | External runtime |
+
+## Toolcode ↔ Runtime Contract
+
+The `code` package uses the `runtime/toolcodeengine` adapter to bridge
+code execution with runtime backends. The adapter maps `code.ExecuteParams`
+to `runtime.ExecuteRequest`, preserving:
+
+- **Security profile** selection
+- **Resource limits** (timeouts, tool-call/chain limits)
+- **ToolGateway** injection for tool discovery/execution
 
 ## backend Package
 

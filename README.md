@@ -12,7 +12,10 @@ go get github.com/jonwraymond/toolexec
 
 | Package | Description | Documentation |
 |---------|-------------|---------------|
-| TBD | TBD | [docs](./docs/) |
+| `run` | Tool execution pipeline | [docs](./docs/) |
+| `code` | Code orchestration layer | [docs](./docs/) |
+| `runtime` | Sandbox runtime interfaces | [docs](./docs/) |
+| `backend` | Backend registry/resolution | [docs](./docs/) |
 
 ## License
 

@@ -6,6 +6,8 @@ github.com/google/jsonschema-go v0.3.0 h1:6AH2TxVNtk3IlvkkhjrtbUc4S8AvO0Xii0DxIy
 github.com/google/jsonschema-go v0.3.0/go.mod h1:r5quNTdLOYEz95Ru18zA0ydNbBuYoo9tgaYcxEYhJVE=
 github.com/jonwraymond/tooldiscovery v0.0.0-20260131044009-da18a6d00b96 h1:zoG7rBq3oEpggbeyh7WD+Wi5EqCSlGrIIzuCSlryPhE=
 github.com/jonwraymond/tooldiscovery v0.0.0-20260131044009-da18a6d00b96/go.mod h1:S5B1FcFjxTnzq94uD7K5C92TLp5Tomhia2SQ2WfCtgg=
+github.com/jonwraymond/tooldiscovery v0.1.0 h1:M3exEtYeqQ3WXxFtLaZfU3BjtHobeewsF9hl77Xu2cs=
+github.com/jonwraymond/tooldiscovery v0.1.0/go.mod h1:1JZzya4mbCoF3N+XklY5y8itUWTc9N0d6ZC1FnKUIDM=
 github.com/jonwraymond/toolfoundation v0.1.0 h1:PmVsdT9j6TP61TxI2D3Zf0MsFFQVAOqHcOrloTi1Cno=
 github.com/jonwraymond/toolfoundation v0.1.0/go.mod h1:naJm1NEZU8FbOw5rM8SJ3OhgHs0q8QHh8igrwP4wNfA=
 github.com/modelcontextprotocol/go-sdk v1.2.0 h1:Y23co09300CEk8iZ/tMxIX1dVmKZkzoSBZOpJwUnc/s=
