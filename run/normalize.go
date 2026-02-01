@@ -3,8 +3,9 @@ package run
 import (
 	"encoding/json"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // normalize creates a RunResult from the dispatch result.

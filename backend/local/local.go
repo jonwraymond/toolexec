@@ -4,9 +4,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/jonwraymond/toolexec/backend"
 	"github.com/jonwraymond/toolfoundation/model"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // HandlerFunc is the function signature for tool handlers.

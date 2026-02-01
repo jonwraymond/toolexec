@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // mockBackend implements Backend for testing.

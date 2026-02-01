@@ -5,8 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // Integration tests verify end-to-end scenarios with real (non-mock) components

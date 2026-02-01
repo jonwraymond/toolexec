@@ -7,9 +7,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/jonwraymond/tooldiscovery/index"
 	"github.com/jonwraymond/toolfoundation/model"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // -----------------------------------------------------------------------------

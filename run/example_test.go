@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/jonwraymond/toolexec/run"
 	"github.com/jonwraymond/toolfoundation/model"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // simpleLocalRegistry is a basic LocalRegistry implementation for examples.

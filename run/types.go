@@ -1,8 +1,9 @@
 package run
 
 import (
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // StreamEventKind represents streaming and progress events.

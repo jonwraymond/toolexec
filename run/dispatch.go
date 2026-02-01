@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // dispatchResult holds the result of dispatching to a backend.
