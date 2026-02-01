@@ -6,10 +6,10 @@ import (
 
 func TestExtractOutValue_ValidJSONWithOut(t *testing.T) {
 	tests := []struct {
-		name            string
-		stdout          string
-		wantValue       any
-		wantRemaining   string
+		name          string
+		stdout        string
+		wantValue     any
+		wantRemaining string
 	}{
 		{
 			name:          "simple string value",
@@ -67,11 +67,11 @@ func TestExtractOutValue_ValidJSONWithOut(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			value, remaining := ExtractOutValue(tt.stdout)
-			
+
 			if !equalAny(value, tt.wantValue) {
 				t.Errorf("ExtractOutValue() value = %v (%T), want %v (%T)", value, value, tt.wantValue, tt.wantValue)
 			}
-			
+
 			if remaining != tt.wantRemaining {
 				t.Errorf("ExtractOutValue() remaining = %q, want %q", remaining, tt.wantRemaining)
 			}
@@ -105,11 +105,11 @@ func TestExtractOutValue_ValidJSONWithoutOut(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			value, remaining := ExtractOutValue(tt.stdout)
-			
+
 			if value != nil {
 				t.Errorf("ExtractOutValue() value = %v, want nil", value)
 			}
-			
+
 			if remaining != tt.wantRemaining {
 				t.Errorf("ExtractOutValue() remaining = %q, want %q", remaining, tt.wantRemaining)
 			}
@@ -143,11 +143,11 @@ func TestExtractOutValue_InvalidJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			value, remaining := ExtractOutValue(tt.stdout)
-			
+
 			if value != nil {
 				t.Errorf("ExtractOutValue() value = %v, want nil", value)
 			}
-			
+
 			if remaining != tt.stdout {
 				t.Errorf("ExtractOutValue() remaining = %q, want %q", remaining, tt.stdout)
 			}
@@ -216,11 +216,11 @@ Line 4`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			value, remaining := ExtractOutValue(tt.stdout)
-			
+
 			if !equalAny(value, tt.wantValue) {
 				t.Errorf("ExtractOutValue() value = %v, want %v", value, tt.wantValue)
 			}
-			
+
 			if remaining != tt.wantRemaining {
 				t.Errorf("ExtractOutValue() remaining = %q, want %q", remaining, tt.wantRemaining)
 			}
@@ -230,11 +230,11 @@ Line 4`,
 
 func TestExtractOutValue_EmptyInput(t *testing.T) {
 	value, remaining := ExtractOutValue("")
-	
+
 	if value != nil {
 		t.Errorf("ExtractOutValue(\"\") value = %v, want nil", value)
 	}
-	
+
 	if remaining != "" {
 		t.Errorf("ExtractOutValue(\"\") remaining = %q, want \"\"", remaining)
 	}
@@ -251,11 +251,11 @@ func TestExtractOutValue_OnlyWhitespace(t *testing.T) {
 	for _, stdout := range tests {
 		t.Run("whitespace", func(t *testing.T) {
 			value, remaining := ExtractOutValue(stdout)
-			
+
 			if value != nil {
 				t.Errorf("ExtractOutValue() value = %v, want nil", value)
 			}
-			
+
 			if remaining != stdout {
 				t.Errorf("ExtractOutValue() remaining = %q, want %q", remaining, stdout)
 			}
@@ -267,13 +267,13 @@ func TestExtractOutValue_MultipleOutLines(t *testing.T) {
 	// If there are multiple __out lines, only the first should be extracted
 	stdout := `{"__out": "first"}
 {"__out": "second"}`
-	
+
 	value, remaining := ExtractOutValue(stdout)
-	
+
 	if value != "first" {
 		t.Errorf("ExtractOutValue() value = %v, want \"first\"", value)
 	}
-	
+
 	// Second line should remain
 	if remaining != "{\"__out\": \"second\"}" {
 		t.Errorf("ExtractOutValue() remaining = %q, want %q", remaining, "{\"__out\": \"second\"}")
@@ -288,7 +288,7 @@ func equalAny(a, b any) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	
+
 	// For maps, need deep comparison
 	aMap, aIsMap := a.(map[string]any)
 	bMap, bIsMap := b.(map[string]any)
@@ -303,7 +303,7 @@ func equalAny(a, b any) bool {
 		}
 		return true
 	}
-	
+
 	// For slices, need deep comparison
 	aSlice, aIsSlice := a.([]any)
 	bSlice, bIsSlice := b.([]any)
@@ -318,7 +318,7 @@ func equalAny(a, b any) bool {
 		}
 		return true
 	}
-	
+
 	// For simple types, use ==
 	return a == b
 }

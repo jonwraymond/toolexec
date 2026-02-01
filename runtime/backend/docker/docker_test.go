@@ -198,10 +198,10 @@ func TestBackendWithMockClient(t *testing.T) {
 
 func TestBackendExecuteWithOutExtraction(t *testing.T) {
 	tests := []struct {
-		name          string
-		stdout        string
-		wantValue     any
-		wantStdout    string
+		name       string
+		stdout     string
+		wantValue  any
+		wantStdout string
 	}{
 		{
 			name:       "JSON with __out string",
