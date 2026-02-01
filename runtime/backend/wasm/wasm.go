@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jonwraymond/toolexec/runtime"
+	"github.com/jonwraymond/toolexec/runtime/backend/shared"
 )
 
 // Errors for WASM backend operations.
@@ -189,10 +190,13 @@ func (b *Backend) Execute(ctx context.Context, req runtime.ExecuteRequest) (runt
 		}, err
 	}
 
+	// Extract __out value from stdout
+	value, remainingStdout := shared.ExtractOutValue(wasmResult.Stdout)
+
 	// Convert to ExecuteResult
 	return runtime.ExecuteResult{
-		Value:    extractOutValue(wasmResult.Stdout),
-		Stdout:   wasmResult.Stdout,
+		Value:    value,
+		Stdout:   remainingStdout,
 		Stderr:   wasmResult.Stderr,
 		Duration: wasmResult.Duration,
 		Backend:  b.backendInfo(profile),
@@ -278,14 +282,6 @@ func (b *Backend) backendInfo(profile runtime.SecurityProfile) runtime.BackendIn
 			"enableWASI":     b.enableWASI,
 		},
 	}
-}
-
-// extractOutValue extracts the __out value from stdout if present.
-// This follows the toolruntime convention for capturing return values.
-func extractOutValue(_ string) any {
-	// TODO: Implement __out extraction from stdout
-	// The gateway proxy will output JSON with __out key
-	return nil
 }
 
 func clampUint32(value uint64) uint32 {

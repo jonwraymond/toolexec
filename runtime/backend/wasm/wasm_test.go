@@ -93,6 +93,92 @@ func TestBackendExecuteSuccess(t *testing.T) {
 	}
 }
 
+func TestBackendExecuteWithOutExtraction(t *testing.T) {
+	tests := []struct {
+		name          string
+		stdout        string
+		wantValue     any
+		wantStdout    string
+	}{
+		{
+			name:       "JSON with __out string",
+			stdout:     `{"__out": "result value"}`,
+			wantValue:  "result value",
+			wantStdout: "",
+		},
+		{
+			name:       "JSON with __out number",
+			stdout:     `{"__out": 42}`,
+			wantValue:  float64(42),
+			wantStdout: "",
+		},
+		{
+			name:       "mixed output with __out",
+			stdout:     "Log: Starting execution\n{\"__out\": \"done\"}\nLog: Complete",
+			wantValue:  "done",
+			wantStdout: "Log: Starting execution\nLog: Complete",
+		},
+		{
+			name:       "no __out in output",
+			stdout:     "just plain text output",
+			wantValue:  nil,
+			wantStdout: "just plain text output",
+		},
+		{
+			name:       "JSON without __out",
+			stdout:     `{"status": "ok", "result": "data"}`,
+			wantValue:  nil,
+			wantStdout: `{"status": "ok", "result": "data"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &mockWasmRunner{
+				result: Result{
+					ExitCode: 0,
+					Stdout:   tt.stdout,
+					Stderr:   "",
+					Duration: 100 * time.Millisecond,
+				},
+			}
+			b := New(Config{
+				Client: mockClient,
+			})
+
+			ctx := context.Background()
+			req := runtime.ExecuteRequest{
+				Code:    "test code",
+				Gateway: &mockGateway{},
+			}
+
+			result, err := b.Execute(ctx, req)
+			if err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+
+			if !equalAny(result.Value, tt.wantValue) {
+				t.Errorf("Value = %v (%T), want %v (%T)", result.Value, result.Value, tt.wantValue, tt.wantValue)
+			}
+
+			if result.Stdout != tt.wantStdout {
+				t.Errorf("Stdout = %q, want %q", result.Stdout, tt.wantStdout)
+			}
+		})
+	}
+}
+
+// equalAny compares two any values
+func equalAny(a, b any) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a == b
+}
+
 func TestBackendHealthCheckFailure(t *testing.T) {
 	mockClient := &mockWasmRunner{}
 	mockHealth := &mockHealthChecker{

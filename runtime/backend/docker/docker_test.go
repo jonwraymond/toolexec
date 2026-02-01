@@ -196,6 +196,93 @@ func TestBackendWithMockClient(t *testing.T) {
 	}
 }
 
+func TestBackendExecuteWithOutExtraction(t *testing.T) {
+	tests := []struct {
+		name          string
+		stdout        string
+		wantValue     any
+		wantStdout    string
+	}{
+		{
+			name:       "JSON with __out string",
+			stdout:     `{"__out": "result value"}`,
+			wantValue:  "result value",
+			wantStdout: "",
+		},
+		{
+			name:       "JSON with __out number",
+			stdout:     `{"__out": 42}`,
+			wantValue:  float64(42),
+			wantStdout: "",
+		},
+		{
+			name:       "mixed output with __out",
+			stdout:     "Log: Starting container\n{\"__out\": \"done\"}\nLog: Container stopped",
+			wantValue:  "done",
+			wantStdout: "Log: Starting container\nLog: Container stopped",
+		},
+		{
+			name:       "no __out in output",
+			stdout:     "just plain text output",
+			wantValue:  nil,
+			wantStdout: "just plain text output",
+		},
+		{
+			name:       "JSON without __out",
+			stdout:     `{"status": "ok", "result": "data"}`,
+			wantValue:  nil,
+			wantStdout: `{"status": "ok", "result": "data"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRunner := &MockContainerRunner{
+				RunFunc: func(_ context.Context, _ ContainerSpec) (ContainerResult, error) {
+					return ContainerResult{
+						ExitCode: 0,
+						Stdout:   tt.stdout,
+						Stderr:   "",
+					}, nil
+				},
+			}
+			b := New(Config{
+				Client: mockRunner,
+			})
+
+			ctx := context.Background()
+			req := runtime.ExecuteRequest{
+				Code:    "print('test')",
+				Gateway: &mockGateway{},
+			}
+
+			result, err := b.Execute(ctx, req)
+			if err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+
+			if !equalAny(result.Value, tt.wantValue) {
+				t.Errorf("Value = %v (%T), want %v (%T)", result.Value, result.Value, tt.wantValue, tt.wantValue)
+			}
+
+			if result.Stdout != tt.wantStdout {
+				t.Errorf("Stdout = %q, want %q", result.Stdout, tt.wantStdout)
+			}
+		})
+	}
+}
+
+// equalAny compares two any values
+func equalAny(a, b any) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a == b
+}
+
 func TestBackendWithHealthChecker(t *testing.T) {
 	t.Run("healthy daemon", func(t *testing.T) {
 		mockRunner := &MockContainerRunner{

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jonwraymond/toolexec/runtime"
+	"github.com/jonwraymond/toolexec/runtime/backend/shared"
 )
 
 // Errors for Docker backend operations.
@@ -239,10 +240,13 @@ func (b *Backend) Execute(ctx context.Context, req runtime.ExecuteRequest) (runt
 		}, err
 	}
 
+	// Extract __out value from stdout
+	value, remainingStdout := shared.ExtractOutValue(containerResult.Stdout)
+
 	// Convert to ExecuteResult
 	return runtime.ExecuteResult{
-		Value:    extractOutValue(containerResult.Stdout),
-		Stdout:   containerResult.Stdout,
+		Value:    value,
+		Stdout:   remainingStdout,
 		Stderr:   containerResult.Stderr,
 		Duration: containerResult.Duration,
 		Backend:  b.backendInfo(profile),
@@ -297,14 +301,6 @@ func (b *Backend) backendInfo(profile runtime.SecurityProfile) runtime.BackendIn
 			"profile": string(profile),
 		},
 	}
-}
-
-// extractOutValue extracts the __out value from stdout if present.
-// This follows the toolruntime convention for capturing return values.
-func extractOutValue(_ string) any {
-	// TODO: Implement __out extraction from stdout
-	// The gateway proxy will output JSON with __out key
-	return nil
 }
 
 // containerOptions returns ContainerOptions based on the security profile and limits.
