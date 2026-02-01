@@ -6,6 +6,7 @@ require (
 	github.com/jonwraymond/tooldiscovery v0.2.1
 	github.com/jonwraymond/toolfoundation v0.2.0
 	github.com/modelcontextprotocol/go-sdk v1.2.0
+	golang.org/x/text v0.33.0
 )
 
 require (
