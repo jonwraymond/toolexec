@@ -1,5 +1,9 @@
 # toolexec Architecture Improvement Plan
 
+> **✅ COMPLETED:** This plan was fully implemented on 2026-02-01.
+> All phases completed: exec/ facade, examples, example tests, coverage improvements, documentation.
+> See CHANGELOG.md for details.
+
 ## Executive Summary
 
 Architectural review and improvement plan for the toolexec submodule, focusing on better integration with toolfoundation and tooldiscovery, comprehensive examples, and coverage improvements.

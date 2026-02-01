@@ -85,3 +85,113 @@ func TestLocalBackend_ExecuteNotFound(t *testing.T) {
 		t.Error("Execute() should fail for nonexistent tool")
 	}
 }
+
+func TestLocalBackend_Enabled(t *testing.T) {
+	b := New("test")
+
+	if !b.Enabled() {
+		t.Error("Enabled() should be true by default")
+	}
+}
+
+func TestLocalBackend_SetEnabled(t *testing.T) {
+	b := New("test")
+
+	b.SetEnabled(false)
+	if b.Enabled() {
+		t.Error("Enabled() should be false after SetEnabled(false)")
+	}
+
+	b.SetEnabled(true)
+	if !b.Enabled() {
+		t.Error("Enabled() should be true after SetEnabled(true)")
+	}
+}
+
+func TestLocalBackend_UnregisterHandler(t *testing.T) {
+	b := New("test")
+
+	b.RegisterHandler("tool", ToolDef{
+		Name:    "tool",
+		Handler: func(_ context.Context, _ map[string]any) (any, error) { return nil, nil },
+	})
+
+	tools, _ := b.ListTools(context.Background())
+	if len(tools) != 1 {
+		t.Fatalf("ListTools() returned %d tools, want 1", len(tools))
+	}
+
+	b.UnregisterHandler("tool")
+
+	tools, _ = b.ListTools(context.Background())
+	if len(tools) != 0 {
+		t.Errorf("ListTools() returned %d tools after unregister, want 0", len(tools))
+	}
+}
+
+func TestLocalBackend_ExecuteDisabled(t *testing.T) {
+	b := New("test")
+
+	b.RegisterHandler("tool", ToolDef{
+		Name:    "tool",
+		Handler: func(_ context.Context, _ map[string]any) (any, error) { return "ok", nil },
+	})
+
+	b.SetEnabled(false)
+
+	_, err := b.Execute(context.Background(), "tool", nil)
+	if err != backend.ErrBackendDisabled {
+		t.Errorf("Execute() error = %v, want ErrBackendDisabled", err)
+	}
+}
+
+func TestLocalBackend_ExecuteNilHandler(t *testing.T) {
+	b := New("test")
+
+	b.RegisterHandler("tool", ToolDef{
+		Name:    "tool",
+		Handler: nil, // No handler
+	})
+
+	_, err := b.Execute(context.Background(), "tool", nil)
+	if err != backend.ErrToolNotFound {
+		t.Errorf("Execute() error = %v, want ErrToolNotFound", err)
+	}
+}
+
+func TestLocalBackend_RegisterHandler_DefaultsName(t *testing.T) {
+	b := New("test")
+
+	// Register with empty Name in ToolDef - should default to key
+	b.RegisterHandler("my_tool", ToolDef{
+		Description: "A test tool",
+		Handler:     func(_ context.Context, _ map[string]any) (any, error) { return nil, nil },
+	})
+
+	tools, _ := b.ListTools(context.Background())
+	if len(tools) != 1 {
+		t.Fatalf("ListTools() returned %d tools, want 1", len(tools))
+	}
+
+	if tools[0].Name != "my_tool" {
+		t.Errorf("Tool.Name = %q, want %q (should default to key)", tools[0].Name, "my_tool")
+	}
+}
+
+func TestLocalBackend_Start(t *testing.T) {
+	b := New("test")
+
+	err := b.Start(context.Background())
+	if err != nil {
+		t.Errorf("Start() error = %v, want nil", err)
+	}
+}
+
+func TestLocalBackend_Stop(t *testing.T) {
+	b := New("test")
+
+	err := b.Stop()
+	if err != nil {
+		t.Errorf("Stop() error = %v, want nil", err)
+	}
+}

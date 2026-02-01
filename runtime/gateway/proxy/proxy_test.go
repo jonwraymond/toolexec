@@ -338,3 +338,231 @@ func TestGatewayErrorResponse(t *testing.T) {
 		t.Errorf("DescribeTool() error = %q, want %q", err.Error(), "tool not found")
 	}
 }
+
+func TestGatewayListToolExamples(t *testing.T) {
+	conn := newAutoRespondConnection(func(msg Message) Message {
+		return Message{
+			Type: MsgResponse,
+			ID:   msg.ID,
+			Payload: map[string]any{
+				"examples": []any{
+					map[string]any{
+						"id":          "ex1",
+						"title":       "Example 1",
+						"description": "First example",
+						"resultHint":  "Returns 42",
+						"args":        map[string]any{"a": 1},
+					},
+					map[string]any{
+						"id":    "ex2",
+						"title": "Example 2",
+					},
+				},
+			},
+		}
+	})
+
+	gw := New(Config{Connection: conn})
+	conn.SetGateway(gw)
+
+	ctx := context.Background()
+	examples, err := gw.ListToolExamples(ctx, "test:tool", 5)
+	if err != nil {
+		t.Fatalf("ListToolExamples() error = %v", err)
+	}
+
+	if len(examples) != 2 {
+		t.Fatalf("ListToolExamples() returned %d examples, want 2", len(examples))
+	}
+
+	if examples[0].ID != "ex1" {
+		t.Errorf("examples[0].ID = %q, want %q", examples[0].ID, "ex1")
+	}
+	if examples[0].Title != "Example 1" {
+		t.Errorf("examples[0].Title = %q, want %q", examples[0].Title, "Example 1")
+	}
+	if examples[0].Description != "First example" {
+		t.Errorf("examples[0].Description = %q, want %q", examples[0].Description, "First example")
+	}
+	if examples[0].ResultHint != "Returns 42" {
+		t.Errorf("examples[0].ResultHint = %q, want %q", examples[0].ResultHint, "Returns 42")
+	}
+	if examples[0].Args["a"] != 1 {
+		t.Errorf("examples[0].Args[a] = %v, want 1", examples[0].Args["a"])
+	}
+}
+
+func TestGatewayListToolExamples_NoExamples(t *testing.T) {
+	conn := newAutoRespondConnection(func(msg Message) Message {
+		return Message{
+			Type:    MsgResponse,
+			ID:      msg.ID,
+			Payload: map[string]any{},
+		}
+	})
+
+	gw := New(Config{Connection: conn})
+	conn.SetGateway(gw)
+
+	ctx := context.Background()
+	examples, err := gw.ListToolExamples(ctx, "test:tool", 5)
+	if err != nil {
+		t.Fatalf("ListToolExamples() error = %v", err)
+	}
+
+	if len(examples) != 0 {
+		t.Errorf("ListToolExamples() returned %d examples, want 0", len(examples))
+	}
+}
+
+func TestGatewayListToolExamples_ConnectionClosed(t *testing.T) {
+	conn := newMockConnection()
+	gw := New(Config{Connection: conn})
+
+	if err := gw.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	ctx := context.Background()
+	_, err := gw.ListToolExamples(ctx, "test:tool", 5)
+	if !errors.Is(err, ErrConnectionClosed) {
+		t.Errorf("ListToolExamples() after close error = %v, want %v", err, ErrConnectionClosed)
+	}
+}
+
+func TestGatewayRunTool_ConnectionClosed(t *testing.T) {
+	conn := newMockConnection()
+	gw := New(Config{Connection: conn})
+
+	if err := gw.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	ctx := context.Background()
+	_, err := gw.RunTool(ctx, "test:tool", nil)
+	if !errors.Is(err, ErrConnectionClosed) {
+		t.Errorf("RunTool() after close error = %v, want %v", err, ErrConnectionClosed)
+	}
+}
+
+func TestGatewayRunChain_ConnectionClosed(t *testing.T) {
+	conn := newMockConnection()
+	gw := New(Config{Connection: conn})
+
+	if err := gw.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	ctx := context.Background()
+	_, _, err := gw.RunChain(ctx, []run.ChainStep{{ToolID: "tool"}})
+	if !errors.Is(err, ErrConnectionClosed) {
+		t.Errorf("RunChain() after close error = %v, want %v", err, ErrConnectionClosed)
+	}
+}
+
+func TestGatewayListNamespaces_ConnectionClosed(t *testing.T) {
+	conn := newMockConnection()
+	gw := New(Config{Connection: conn})
+
+	if err := gw.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	ctx := context.Background()
+	_, err := gw.ListNamespaces(ctx)
+	if !errors.Is(err, ErrConnectionClosed) {
+		t.Errorf("ListNamespaces() after close error = %v, want %v", err, ErrConnectionClosed)
+	}
+}
+
+func TestGatewayDescribeTool_ConnectionClosed(t *testing.T) {
+	conn := newMockConnection()
+	gw := New(Config{Connection: conn})
+
+	if err := gw.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	ctx := context.Background()
+	_, err := gw.DescribeTool(ctx, "test:tool", tooldoc.DetailFull)
+	if !errors.Is(err, ErrConnectionClosed) {
+		t.Errorf("DescribeTool() after close error = %v, want %v", err, ErrConnectionClosed)
+	}
+}
+
+func TestJsonCodec_Encode(t *testing.T) {
+	codec := &jsonCodec{}
+	msg := Message{
+		Type:    MsgSearchTools,
+		ID:      "test-123",
+		Payload: map[string]any{"key": "value"},
+	}
+
+	data, err := codec.Encode(msg)
+	if err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+
+	if len(data) == 0 {
+		t.Error("Encode() returned empty data")
+	}
+}
+
+func TestJsonCodec_Decode(t *testing.T) {
+	codec := &jsonCodec{}
+	data := []byte(`{"type":"search_tools","id":"test-123","payload":{"key":"value"}}`)
+
+	msg, err := codec.Decode(data)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	if msg.Type != MsgSearchTools {
+		t.Errorf("Decode().Type = %q, want %q", msg.Type, MsgSearchTools)
+	}
+	if msg.ID != "test-123" {
+		t.Errorf("Decode().ID = %q, want %q", msg.ID, "test-123")
+	}
+}
+
+func TestJsonCodec_Decode_Invalid(t *testing.T) {
+	codec := &jsonCodec{}
+	data := []byte(`{invalid json}`)
+
+	_, err := codec.Decode(data)
+	if err == nil {
+		t.Error("Decode() should return error for invalid JSON")
+	}
+}
+
+func TestGetString(t *testing.T) {
+	m := map[string]any{
+		"exists":    "value",
+		"notString": 42,
+	}
+
+	if got := getString(m, "exists"); got != "value" {
+		t.Errorf("getString(exists) = %q, want %q", got, "value")
+	}
+
+	if got := getString(m, "notString"); got != "" {
+		t.Errorf("getString(notString) = %q, want empty string", got)
+	}
+
+	if got := getString(m, "missing"); got != "" {
+		t.Errorf("getString(missing) = %q, want empty string", got)
+	}
+}
+
+func TestGatewayDeliverResponse_UnknownID(t *testing.T) {
+	conn := newMockConnection()
+	gw := New(Config{Connection: conn})
+
+	err := gw.DeliverResponse(Message{
+		Type: MsgResponse,
+		ID:   "unknown-id",
+	})
+	if err == nil {
+		t.Error("DeliverResponse() should return error for unknown ID")
+	}
+}

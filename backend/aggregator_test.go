@@ -119,3 +119,96 @@ func TestAggregator_ParseToolID(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatToolID(t *testing.T) {
+	tests := []struct {
+		backend string
+		tool    string
+		want    string
+	}{
+		{"local", "echo", "local:echo"},
+		{"github", "create_issue", "github:create_issue"},
+		{"", "tool", "tool"},
+	}
+
+	for _, tt := range tests {
+		got := FormatToolID(tt.backend, tt.tool)
+		if got != tt.want {
+			t.Errorf("FormatToolID(%q, %q) = %q, want %q", tt.backend, tt.tool, got, tt.want)
+		}
+	}
+}
+
+func TestAggregator_ListAllTools_Error(t *testing.T) {
+	registry := NewRegistry()
+
+	_ = registry.Register(&mockBackend{
+		kind:    "local",
+		name:    "failing",
+		enabled: true,
+		listErr: ErrToolNotFound,
+	})
+
+	agg := NewAggregator(registry)
+
+	_, err := agg.ListAllTools(context.Background())
+	if err == nil {
+		t.Error("ListAllTools() should propagate error from backend")
+	}
+}
+
+func TestAggregator_ListAllTools_SetsNamespace(t *testing.T) {
+	registry := NewRegistry()
+
+	_ = registry.Register(&mockBackend{
+		kind:    "local",
+		name:    "mybackend",
+		enabled: true,
+		tools: []model.Tool{
+			{Tool: mcp.Tool{Name: "tool_without_namespace"}, Namespace: ""},
+		},
+	})
+
+	agg := NewAggregator(registry)
+
+	tools, err := agg.ListAllTools(context.Background())
+	if err != nil {
+		t.Fatalf("ListAllTools() error = %v", err)
+	}
+
+	if len(tools) != 1 {
+		t.Fatalf("ListAllTools() returned %d tools, want 1", len(tools))
+	}
+
+	if tools[0].Namespace != "mybackend" {
+		t.Errorf("Tool namespace = %q, want %q", tools[0].Namespace, "mybackend")
+	}
+}
+
+func TestAggregator_Execute_InvalidToolID(t *testing.T) {
+	registry := NewRegistry()
+	agg := NewAggregator(registry)
+
+	// Empty backend name after parse
+	_, err := agg.Execute(context.Background(), "toolonly", nil)
+	if err != ErrInvalidToolID {
+		t.Errorf("Execute() error = %v, want ErrInvalidToolID", err)
+	}
+}
+
+func TestAggregator_Execute_DisabledBackend(t *testing.T) {
+	registry := NewRegistry()
+
+	_ = registry.Register(&mockBackend{
+		kind:    "local",
+		name:    "disabled",
+		enabled: false,
+	})
+
+	agg := NewAggregator(registry)
+
+	_, err := agg.Execute(context.Background(), "disabled:tool", nil)
+	if err != ErrBackendDisabled {
+		t.Errorf("Execute() error = %v, want ErrBackendDisabled", err)
+	}
+}

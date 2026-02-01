@@ -287,6 +287,194 @@ func TestDeepCopyArgs_CustomStructPointer(t *testing.T) {
 	}
 }
 
+func TestDeepCopyValue_TypedMaps(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+	}{
+		{"map[string]string", map[string]string{"key": "value"}},
+		{"map[string]int", map[string]int{"count": 42}},
+		{"map[string]float64", map[string]float64{"pi": 3.14}},
+		{"map[string]bool", map[string]bool{"flag": true}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := deepCopyValue(tt.input)
+			m, ok := result.(map[string]any)
+			if !ok {
+				t.Fatalf("expected map[string]any, got %T", result)
+			}
+			if len(m) != 1 {
+				t.Errorf("expected map with 1 key, got %d", len(m))
+			}
+		})
+	}
+}
+
+func TestDeepCopyValue_TypedSlices(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    any
+		expected int
+	}{
+		{"[]string", []string{"a", "b", "c"}, 3},
+		{"[]int", []int{1, 2, 3}, 3},
+		{"[]float64", []float64{1.1, 2.2}, 2},
+		{"[]bool", []bool{true, false}, 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := deepCopyValue(tt.input)
+			s, ok := result.([]any)
+			if !ok {
+				t.Fatalf("expected []any, got %T", result)
+			}
+			if len(s) != tt.expected {
+				t.Errorf("expected slice of length %d, got %d", tt.expected, len(s))
+			}
+		})
+	}
+}
+
+func TestDeepCopyValue_NestedSliceAny(t *testing.T) {
+	input := []any{
+		map[string]any{"nested": "value"},
+		[]any{1, 2, 3},
+		"string",
+	}
+
+	result := deepCopyValue(input)
+	s, ok := result.([]any)
+	if !ok {
+		t.Fatalf("expected []any, got %T", result)
+	}
+	if len(s) != 3 {
+		t.Errorf("expected slice of length 3, got %d", len(s))
+	}
+
+	// Verify nested map was copied
+	nested, ok := s[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected nested map[string]any, got %T", s[0])
+	}
+	if nested["nested"] != "value" {
+		t.Errorf("expected nested['nested'] = 'value', got %v", nested["nested"])
+	}
+}
+
+func TestDeepCopySlice_Nil(t *testing.T) {
+	result := deepCopySlice(nil)
+	if result != nil {
+		t.Errorf("expected nil, got %v", result)
+	}
+}
+
+func TestDeepCopyValue_NilPointer(t *testing.T) {
+	var ptr *customStruct
+	result := deepCopyValue(ptr)
+	if result != nil {
+		t.Errorf("expected nil for nil pointer, got %v", result)
+	}
+}
+
+func TestDeepCopyValue_Primitives(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+	}{
+		{"string", "hello"},
+		{"bool", true},
+		{"float64", 3.14},
+		{"float32", float32(1.5)},
+		{"int", 42},
+		{"int8", int8(8)},
+		{"int16", int16(16)},
+		{"int32", int32(32)},
+		{"int64", int64(64)},
+		{"uint", uint(10)},
+		{"uint8", uint8(8)},
+		{"uint16", uint16(16)},
+		{"uint32", uint32(32)},
+		{"uint64", uint64(64)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := deepCopyValue(tt.input)
+			if result != tt.input {
+				t.Errorf("expected %v, got %v", tt.input, result)
+			}
+		})
+	}
+}
+
+func TestDeepCopyArgs_Nil(t *testing.T) {
+	result := deepCopyArgs(nil)
+	if result != nil {
+		t.Errorf("expected nil, got %v", result)
+	}
+}
+
+func TestDeepCopyValue_Nil(t *testing.T) {
+	result := deepCopyValue(nil)
+	if result != nil {
+		t.Errorf("expected nil, got %v", result)
+	}
+}
+
+func TestTools_ListNamespaces_ContextCanceled(t *testing.T) {
+	tools := newTools(&Config{
+		Index:  &mockIndex{},
+		Docs:   &mockStore{},
+		Run:    &mockRunner{},
+		Engine: &mockEngine{},
+	}, 0, 0)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := tools.ListNamespaces(ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+}
+
+func TestTools_DescribeTool_ContextCanceled(t *testing.T) {
+	tools := newTools(&Config{
+		Index:  &mockIndex{},
+		Docs:   &mockStore{},
+		Run:    &mockRunner{},
+		Engine: &mockEngine{},
+	}, 0, 0)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := tools.DescribeTool(ctx, "tool1", tooldoc.DetailFull)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+}
+
+func TestTools_ListToolExamples_ContextCanceled(t *testing.T) {
+	tools := newTools(&Config{
+		Index:  &mockIndex{},
+		Docs:   &mockStore{},
+		Run:    &mockRunner{},
+		Engine: &mockEngine{},
+	}, 0, 0)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := tools.ListToolExamples(ctx, "tool1", 5)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+}
+
 func TestTools_RunTool_RecordsError(t *testing.T) {
 	expectedErr := errors.New("tool execution failed")
 	runner := &mockRunner{

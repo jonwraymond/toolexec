@@ -5,6 +5,57 @@
 toolexec provides the execution layer for the ApertureStack tool framework.
 It handles tool execution, code orchestration, and runtime isolation.
 
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                          exec                                │
+│              (Unified Facade - Single Entry Point)          │
+│  SearchTools, RunTool, RunChain, GetToolDoc                 │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+          ┌───────────────┼───────────────┐
+          v               v               v
+    ┌──────────┐   ┌──────────────┐  ┌──────────┐
+    │  index   │   │     run      │  │ tooldoc  │
+    │(discover)│   │  (execute)   │  │  (docs)  │
+    └──────────┘   └──────┬───────┘  └──────────┘
+                          │
+                          v
+                   ┌──────────────┐
+                   │   backend    │
+                   │  (registry)  │
+                   └──────────────┘
+                          │
+          ┌───────────────┼───────────────┐
+          v               v               v
+    ┌──────────┐   ┌──────────────┐  ┌──────────┐
+    │  local   │   │     mcp      │  │ provider │
+    │ handlers │   │   servers    │  │   APIs   │
+    └──────────┘   └──────────────┘  └──────────┘
+```
+
+## exec Package (Unified Facade)
+
+### Design Decisions
+
+1. **Single Entry Point**: The `exec.Exec` type provides a unified API combining
+   discovery (search, describe) with execution (run, chain). Users don't need
+   to understand multiple packages for basic operations.
+
+2. **Options Pattern**: Configuration via `exec.Options` allows:
+   - Custom index and doc store
+   - Local handler registration via map
+   - MCP and provider executors
+   - Input/output validation toggles
+   - Security profile selection
+
+3. **Result Types**: Consistent `Result` and `StepResult` types wrap lower-level
+   `run.RunResult` with additional context (toolID, duration, error).
+
+4. **Handler Function**: Simple `func(ctx, args) (any, error)` signature for
+   local tool handlers, avoiding the need to understand backend interfaces.
+
 ## run Package
 
 ### Design Decisions

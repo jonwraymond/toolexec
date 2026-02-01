@@ -13,11 +13,14 @@ import (
 //
 //nolint:revive // test helper
 type mockBackend struct {
-	kind    string
-	name    string
-	enabled bool
-	tools   []model.Tool
-	execFn  func(ctx context.Context, tool string, args map[string]any) (any, error)
+	kind     string
+	name     string
+	enabled  bool
+	tools    []model.Tool
+	listErr  error
+	startErr error
+	stopErr  error
+	execFn   func(ctx context.Context, tool string, args map[string]any) (any, error)
 }
 
 func (m *mockBackend) Kind() string  { return m.kind }
@@ -25,6 +28,9 @@ func (m *mockBackend) Name() string  { return m.name }
 func (m *mockBackend) Enabled() bool { return m.enabled }
 
 func (m *mockBackend) ListTools(_ context.Context) ([]model.Tool, error) {
+	if m.listErr != nil {
+		return nil, m.listErr
+	}
 	return m.tools, nil
 }
 
@@ -35,8 +41,8 @@ func (m *mockBackend) Execute(ctx context.Context, tool string, args map[string]
 	return nil, nil
 }
 
-func (m *mockBackend) Start(_ context.Context) error { return nil }
-func (m *mockBackend) Stop() error                   { return nil }
+func (m *mockBackend) Start(_ context.Context) error { return m.startErr }
+func (m *mockBackend) Stop() error                   { return m.stopErr }
 
 func TestBackend_Interface(t *testing.T) {
 	t.Helper()

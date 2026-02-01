@@ -25,6 +25,8 @@ Thumbs.db
 # Coverage
 coverage.out
 coverage.html
+*_cov.out
+*_cov.html
 
 # Build
 dist/
@@ -32,4 +34,6 @@ bin/
 
 .claude/
 
+# Claude context files
 CLAUDE.md
+**/CLAUDE.md
