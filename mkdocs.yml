@@ -1,0 +1,12 @@
+site_name: toolexec
+site_description: Documentation for toolexec
+repo_name: jonwraymond/toolexec
+repo_url: https://github.com/jonwraymond/toolexec
+edit_uri: edit/main/docs/
+docs_dir: docs
+nav:
+  - Home: index.md
+  - Design Notes: design-notes.md
+  - User Journey: user-journey.md
+theme:
+  name: material
