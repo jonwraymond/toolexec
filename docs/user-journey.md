@@ -222,7 +222,8 @@ Client              exec.Exec            run.Runner           Backend
 
 ## Examples
 
-See the [examples/](../examples/) directory for runnable examples:
+See the [examples](examples.md) page for runnable examples (source lives in
+`toolexec/examples/`):
 
 - `basic/` - Simple tool execution
 - `chain/` - Sequential tool chaining
