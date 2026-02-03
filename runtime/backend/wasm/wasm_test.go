@@ -12,6 +12,8 @@ import (
 	"github.com/jonwraymond/toolexec/runtime"
 )
 
+var minimalWasmModule = []byte{0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00}
+
 func TestBackendImplementsInterface(t *testing.T) {
 	t.Helper()
 	var _ runtime.Backend = (*Backend)(nil)
@@ -76,9 +78,10 @@ func TestBackendExecuteSuccess(t *testing.T) {
 
 	ctx := context.Background()
 	req := runtime.ExecuteRequest{
-		Code:    "test code",
-		Gateway: &mockGateway{},
-		Timeout: 5 * time.Second,
+		Code:     "test code",
+		Gateway:  &mockGateway{},
+		Timeout:  5 * time.Second,
+		Metadata: map[string]any{"wasm_module": minimalWasmModule},
 	}
 
 	result, err := b.Execute(ctx, req)
@@ -105,8 +108,9 @@ func TestBackendHealthCheckFailure(t *testing.T) {
 
 	ctx := context.Background()
 	req := runtime.ExecuteRequest{
-		Code:    "test",
-		Gateway: &mockGateway{},
+		Code:     "test",
+		Gateway:  &mockGateway{},
+		Metadata: map[string]any{"wasm_module": minimalWasmModule},
 	}
 
 	_, err := b.Execute(ctx, req)
@@ -127,8 +131,9 @@ func TestBackendContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately
 
 	req := runtime.ExecuteRequest{
-		Code:    "test",
-		Gateway: &mockGateway{},
+		Code:     "test",
+		Gateway:  &mockGateway{},
+		Metadata: map[string]any{"wasm_module": minimalWasmModule},
 	}
 
 	_, err := b.Execute(ctx, req)
@@ -158,8 +163,9 @@ func TestBackendBuildSpecProfiles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(string(tt.profile), func(t *testing.T) {
 			req := runtime.ExecuteRequest{
-				Code:    "test",
-				Gateway: &mockGateway{},
+				Code:     "test",
+				Gateway:  &mockGateway{},
+				Metadata: map[string]any{"wasm_module": minimalWasmModule},
 			}
 			spec := b.buildSpec(req, tt.profile)
 
@@ -183,8 +189,9 @@ func TestBackendBuildSpecMemoryLimit(t *testing.T) {
 	})
 
 	req := runtime.ExecuteRequest{
-		Code:    "test",
-		Gateway: &mockGateway{},
+		Code:     "test",
+		Gateway:  &mockGateway{},
+		Metadata: map[string]any{"wasm_module": minimalWasmModule},
 		Limits: runtime.Limits{
 			MemoryBytes: 32 * 1024 * 1024, // 32MB
 		},
@@ -196,6 +203,22 @@ func TestBackendBuildSpecMemoryLimit(t *testing.T) {
 	expectedPages := uint32(512)
 	if spec.Resources.MemoryPages != expectedPages {
 		t.Errorf("MemoryPages = %d, want %d", spec.Resources.MemoryPages, expectedPages)
+	}
+}
+
+func TestBackendMissingModule(t *testing.T) {
+	mockClient := &mockWasmRunner{}
+	b := New(Config{Client: mockClient})
+
+	ctx := context.Background()
+	req := runtime.ExecuteRequest{
+		Code:    "test",
+		Gateway: &mockGateway{},
+	}
+
+	_, err := b.Execute(ctx, req)
+	if !errors.Is(err, ErrInvalidModule) {
+		t.Errorf("Execute() missing module error = %v, want %v", err, ErrInvalidModule)
 	}
 }
 

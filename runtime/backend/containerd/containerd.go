@@ -59,7 +59,8 @@ type Config struct {
 	// Default: /run/containerd/containerd.sock
 	SocketPath string
 
-	// Runtime is the containerd runtime to use (e.g., "io.containerd.runc.v2").
+	// Runtime is the containerd runtime to use.
+	// Examples: "io.containerd.runc.v2", "io.containerd.runsc.v1", "io.containerd.kata.v2", "aws.firecracker".
 	// Optional.
 	Runtime string
 

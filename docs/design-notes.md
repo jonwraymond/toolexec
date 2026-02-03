@@ -132,9 +132,9 @@ Readiness tiers:
 | `BackendDocker` | prod | Container | Docker daemon + ContainerRunner | Standard isolation |
 | `BackendContainerd` | beta | Container | containerd client | Infrastructure-native |
 | `BackendKubernetes` | beta | Pod/Job | kubeconfig/client | Cluster execution |
-| `BackendGVisor` | beta | Sandbox | gVisor/runsc | Stronger isolation |
-| `BackendKata` | beta | VM | Kata runtime | VM-level isolation |
-| `BackendFirecracker` | beta | MicroVM | Firecracker runtime | Strongest isolation |
+| `BackendGVisor` | beta | Sandbox | gVisor/runsc (`io.containerd.runsc.v1`) | Stronger isolation |
+| `BackendKata` | beta | VM | Kata runtime (`io.containerd.kata.v2`) | VM-level isolation |
+| `BackendFirecracker` | beta | MicroVM | Firecracker runtime (`aws.firecracker`) | Strongest isolation |
 | `BackendWASM` | beta | Sandbox | wazero | In-process WASM |
 | `BackendTemporal` | stub | Workflow | Temporal client | Orchestrated execution |
 | `BackendRemote` | beta | Remote | HTTP service | External runtime with signed requests |

@@ -4,6 +4,7 @@ package wasm
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -170,8 +171,14 @@ func (b *Backend) Execute(ctx context.Context, req runtime.ExecuteRequest) (runt
 		}
 	}
 
+	module, err := moduleFromRequest(req)
+	if err != nil {
+		return runtime.ExecuteResult{}, err
+	}
+
 	// Build WASM spec from request
 	spec := b.buildSpec(req, profile)
+	spec.Module = module
 
 	// Log execution
 	if b.logger != nil {
@@ -219,8 +226,6 @@ func (b *Backend) buildSpec(req runtime.ExecuteRequest, profile runtime.Security
 	}
 
 	spec := Spec{
-		// Note: Module bytes would need to be provided by the execution framework
-		// This is typically handled by a code compiler step before execution
 		Timeout: req.Timeout,
 		Security: SecuritySpec{
 			EnableWASI:           b.enableWASI,
@@ -318,6 +323,60 @@ func clampUint32(value uint64) uint32 {
 	}
 	// #nosec G115 -- value bounded to MaxUint32.
 	return uint32(value)
+}
+
+func moduleFromRequest(req runtime.ExecuteRequest) ([]byte, error) {
+	if req.Metadata == nil {
+		return nil, ErrInvalidModule
+	}
+
+	if raw, ok := req.Metadata["wasm_module"]; ok {
+		return decodeModule(raw)
+	}
+	if raw, ok := req.Metadata["wasm_module_b64"]; ok {
+		return decodeModule(raw)
+	}
+
+	return nil, ErrInvalidModule
+}
+
+func decodeModule(raw any) ([]byte, error) {
+	switch v := raw.(type) {
+	case []byte:
+		if !isWasmModule(v) {
+			return nil, ErrInvalidModule
+		}
+		return v, nil
+	case string:
+		return decodeModuleString(v)
+	default:
+		return nil, ErrInvalidModule
+	}
+}
+
+func decodeModuleString(value string) ([]byte, error) {
+	if value == "" {
+		return nil, ErrInvalidModule
+	}
+
+	data, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		data, err = base64.RawStdEncoding.DecodeString(value)
+	}
+	if err != nil {
+		return nil, ErrInvalidModule
+	}
+	if !isWasmModule(data) {
+		return nil, ErrInvalidModule
+	}
+	return data, nil
+}
+
+func isWasmModule(data []byte) bool {
+	if len(data) < 4 {
+		return false
+	}
+	return data[0] == 0x00 && data[1] == 0x61 && data[2] == 0x73 && data[3] == 0x6d
 }
 
 var _ runtime.Backend = (*Backend)(nil)

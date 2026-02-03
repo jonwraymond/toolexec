@@ -206,6 +206,22 @@ with `ProfileStandard`.
 For maximum isolation, use `runtime/backend/gvisor`, `runtime/backend/kata`, or
 `runtime/backend/firecracker` with `ProfileHardened`.
 
+### WASM Execution Input
+
+The WASM backend expects a compiled module provided via `ExecuteRequest.Metadata`:
+
+```go
+req := runtime.ExecuteRequest{
+    Language: "wasm",
+    Code:     "ignored for wasm",
+    Gateway:  gateway,
+    Metadata: map[string]any{
+        "wasm_module": []byte{0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00},
+        // or "wasm_module_b64": "<base64-encoded module bytes>"
+    },
+}
+```
+
 ## Execution Flow
 
 ```
