@@ -100,6 +100,7 @@ backend.RegisterHandler("add", local.ToolDef{
 - **Tool Chaining**: Chain multiple tool calls with `UsePrevious` result passing
 - **Security Profiles**: Dev, Standard, and Hardened isolation levels
 - **Runtime Isolation**: Sandbox untrusted code with Docker, containerd, Kubernetes, gVisor, Kata, Firecracker, WASM, remote, or Proxmox LXC backends
+- **Integration Boundary**: Concrete runtime SDK clients live in `toolexec-integrations` and are injected into core backends via interfaces
 
 ## Examples
 

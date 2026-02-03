@@ -35,6 +35,9 @@ The `runtime` package provides isolation levels via security profiles:
 - **Standard**: container or sandbox runtime
 - **Hardened**: strongest isolation (Docker/gVisor/WASM)
 
+Concrete runtime SDK clients (Kubernetes, Proxmox, remote HTTP) live in
+`toolexec-integrations` and are injected into the core backends via interfaces.
+
 ## Observability
 
 Execution surfaces timing and tool call metadata in `exec.Result` and
