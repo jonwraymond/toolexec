@@ -284,22 +284,11 @@ func TestSpecBuilder(t *testing.T) {
 	})
 }
 
-func TestSpecBuilderMustBuild(t *testing.T) {
-	t.Run("valid spec", func(t *testing.T) {
-		spec := NewSpecBuilder("alpine:latest").MustBuild()
-		if spec.Image != "alpine:latest" {
-			t.Errorf("Image = %q, want %q", spec.Image, "alpine:latest")
-		}
-	})
-
-	t.Run("invalid spec panics", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Error("MustBuild() with invalid spec should panic")
-			}
-		}()
-		NewSpecBuilder("").MustBuild()
-	})
+func TestSpecBuilderBuildInvalid(t *testing.T) {
+	_, err := NewSpecBuilder("").Build()
+	if err == nil {
+		t.Error("Build() with invalid spec should return error")
+	}
 }
 
 func TestSpecBuilderChaining(t *testing.T) {
