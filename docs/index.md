@@ -99,7 +99,7 @@ backend.RegisterHandler("add", local.ToolDef{
 - **Backend Abstraction**: Execute local, provider, or MCP server backends
 - **Tool Chaining**: Chain multiple tool calls with `UsePrevious` result passing
 - **Security Profiles**: Dev, Standard, and Hardened isolation levels
-- **Runtime Isolation**: Sandbox untrusted code with Docker, gVisor, or WASM
+- **Runtime Isolation**: Sandbox untrusted code with Docker, containerd, Kubernetes, gVisor, Kata, Firecracker, WASM, remote, or Proxmox LXC backends
 
 ## Examples
 

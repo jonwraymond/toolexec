@@ -64,6 +64,7 @@ func TestBackendKindConstants(t *testing.T) {
 		{BackendWASM, "wasm"},
 		{BackendTemporal, "temporal"},
 		{BackendRemote, "remote"},
+		{BackendProxmoxLXC, "proxmox_lxc"},
 	}
 
 	for _, tt := range tests {
@@ -272,8 +273,9 @@ func TestExecuteResult(t *testing.T) {
 		},
 		Duration: 200 * time.Millisecond,
 		Backend: BackendInfo{
-			Kind:    BackendDocker,
-			Details: map[string]any{"container": "abc123"},
+			Kind:      BackendDocker,
+			Readiness: ReadinessProd,
+			Details:   map[string]any{"container": "abc123"},
 		},
 	}
 
@@ -300,7 +302,8 @@ func TestExecuteResult(t *testing.T) {
 // Test BackendInfo
 func TestBackendInfo(t *testing.T) {
 	info := BackendInfo{
-		Kind: BackendUnsafeHost,
+		Kind:      BackendUnsafeHost,
+		Readiness: ReadinessProd,
 		Details: map[string]any{
 			"pid": 12345,
 		},
@@ -308,6 +311,9 @@ func TestBackendInfo(t *testing.T) {
 
 	if info.Kind != BackendUnsafeHost {
 		t.Errorf("BackendInfo.Kind = %v, want %v", info.Kind, BackendUnsafeHost)
+	}
+	if info.Readiness != ReadinessProd {
+		t.Errorf("BackendInfo.Readiness = %v, want %v", info.Readiness, ReadinessProd)
 	}
 	if info.Details["pid"] != 12345 {
 		t.Errorf("BackendInfo.Details[\"pid\"] = %v, want %v", info.Details["pid"], 12345)

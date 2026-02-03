@@ -4,8 +4,10 @@ package kata
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jonwraymond/toolexec/runtime"
@@ -21,6 +23,15 @@ var (
 
 	// ErrVMExecutionFailed is returned when VM execution fails.
 	ErrVMExecutionFailed = errors.New("vm execution failed")
+
+	// ErrClientNotConfigured is returned when no SandboxRunner is configured.
+	ErrClientNotConfigured = errors.New("kata runner not configured")
+
+	// ErrDaemonUnavailable is returned when kata-runtime is not reachable.
+	ErrDaemonUnavailable = errors.New("kata runtime unavailable")
+
+	// ErrSecurityViolation is returned when a security policy is violated.
+	ErrSecurityViolation = errors.New("security policy violation")
 )
 
 // Logger is the interface for logging.
@@ -40,6 +51,10 @@ type Config struct {
 	// Default: kata-runtime (uses PATH)
 	RuntimePath string
 
+	// Image is the container image to use for execution.
+	// Default: toolruntime-sandbox:latest
+	Image string
+
 	// Hypervisor specifies the hypervisor to use.
 	// Options: qemu, cloud-hypervisor, firecracker
 	// Default: qemu
@@ -51,6 +66,16 @@ type Config struct {
 	// ImagePath is the path to the guest image/rootfs.
 	ImagePath string
 
+	// Client executes sandbox specs.
+	// If nil, Execute() returns ErrClientNotConfigured.
+	Client SandboxRunner
+
+	// ImageResolver optionally resolves/pulls images before execution.
+	ImageResolver ImageResolver
+
+	// HealthChecker optionally verifies kata availability.
+	HealthChecker HealthChecker
+
 	// Logger is an optional logger for backend events.
 	Logger Logger
 }
@@ -61,6 +86,10 @@ type Backend struct {
 	hypervisor  string
 	kernelPath  string
 	imagePath   string
+	image       string
+	client      SandboxRunner
+	resolver    ImageResolver
+	health      HealthChecker
 	logger      Logger
 }
 
@@ -76,11 +105,20 @@ func New(cfg Config) *Backend {
 		hypervisor = "qemu"
 	}
 
+	image := cfg.Image
+	if image == "" {
+		image = "toolruntime-sandbox:latest"
+	}
+
 	return &Backend{
 		runtimePath: runtimePath,
 		hypervisor:  hypervisor,
 		kernelPath:  cfg.KernelPath,
 		imagePath:   cfg.ImagePath,
+		image:       image,
+		client:      cfg.Client,
+		resolver:    cfg.ImageResolver,
+		health:      cfg.HealthChecker,
 		logger:      cfg.Logger,
 	}
 }
@@ -99,19 +137,176 @@ func (b *Backend) Execute(ctx context.Context, req runtime.ExecuteRequest) (runt
 		return runtime.ExecuteResult{}, err
 	}
 
-	start := time.Now()
-
-	result := runtime.ExecuteResult{
-		Duration: time.Since(start),
-		Backend: runtime.BackendInfo{
-			Kind: runtime.BackendKata,
-			Details: map[string]any{
-				"hypervisor": b.hypervisor,
-			},
-		},
+	if b.client == nil {
+		return runtime.ExecuteResult{}, ErrClientNotConfigured
 	}
 
-	return result, fmt.Errorf("%w: kata backend not fully implemented", ErrKataNotAvailable)
+	timeout := req.Timeout
+	if timeout == 0 {
+		timeout = 30 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	start := time.Now()
+
+	if b.health != nil {
+		if err := b.health.Ping(ctx); err != nil {
+			return runtime.ExecuteResult{}, fmt.Errorf("%w: %v", ErrDaemonUnavailable, err)
+		}
+	}
+
+	image := b.image
+	if b.resolver != nil {
+		resolved, err := b.resolver.Resolve(ctx, image)
+		if err != nil {
+			return runtime.ExecuteResult{}, err
+		}
+		image = resolved
+	}
+
+	profile := req.Profile
+	if profile == "" {
+		profile = runtime.ProfileStandard
+	}
+
+	spec, err := b.buildSpec(image, req, profile)
+	if err != nil {
+		return runtime.ExecuteResult{}, err
+	}
+
+	if b.logger != nil {
+		b.logger.Info("executing in kata",
+			"profile", profile,
+			"image", image,
+			"hypervisor", b.hypervisor)
+	}
+
+	runResult, err := b.client.Run(ctx, spec)
+	if err != nil {
+		return runtime.ExecuteResult{
+			Duration: time.Since(start),
+			Backend:  b.backendInfo(profile),
+		}, err
+	}
+
+	return runtime.ExecuteResult{
+		Value:    extractOutValue(runResult.Stdout),
+		Stdout:   runResult.Stdout,
+		Stderr:   runResult.Stderr,
+		Duration: runResult.Duration,
+		Backend:  b.backendInfo(profile),
+		LimitsEnforced: runtime.LimitsEnforced{
+			Timeout:    true,
+			Memory:     req.Limits.MemoryBytes > 0,
+			CPU:        req.Limits.CPUQuotaMillis > 0,
+			Pids:       req.Limits.PidsMax > 0,
+			Disk:       req.Limits.DiskBytes > 0,
+			ToolCalls:  true,
+			ChainSteps: true,
+		},
+	}, nil
 }
 
 var _ runtime.Backend = (*Backend)(nil)
+
+func (b *Backend) backendInfo(profile runtime.SecurityProfile) runtime.BackendInfo {
+	return runtime.BackendInfo{
+		Kind:      runtime.BackendKata,
+		Readiness: runtime.ReadinessBeta,
+		Details: map[string]any{
+			"hypervisor": b.hypervisor,
+			"profile":    string(profile),
+		},
+	}
+}
+
+func (b *Backend) buildSpec(image string, req runtime.ExecuteRequest, profile runtime.SecurityProfile) (SandboxSpec, error) {
+	opts := b.sandboxOptions(profile, req.Limits)
+
+	spec := SandboxSpec{
+		Image:      image,
+		Runtime:    b.runtimePath,
+		Hypervisor: b.hypervisor,
+		KernelPath: b.kernelPath,
+		ImagePath:  b.imagePath,
+		Resources:  ResourceSpec{MemoryBytes: opts.MemoryLimit, CPUQuota: opts.CPUQuota, PidsLimit: opts.PidsLimit, DiskBytes: opts.DiskBytes},
+		Security:   SecuritySpec{User: opts.User, ReadOnlyRootfs: opts.ReadOnlyRootfs, NetworkMode: opts.NetworkMode},
+		Timeout:    req.Timeout,
+		Labels:     map[string]string{"runtime.profile": string(profile), "runtime.backend": string(runtime.BackendKata)},
+	}
+
+	if err := spec.Validate(); err != nil {
+		return SandboxSpec{}, err
+	}
+	return spec, nil
+}
+
+type sandboxOptions struct {
+	NetworkMode    string
+	ReadOnlyRootfs bool
+	MemoryLimit    int64
+	CPUQuota       int64
+	PidsLimit      int64
+	DiskBytes      int64
+	User           string
+}
+
+func (b *Backend) sandboxOptions(profile runtime.SecurityProfile, limits runtime.Limits) sandboxOptions {
+	opts := sandboxOptions{User: "nobody:nogroup"}
+
+	switch profile {
+	case runtime.ProfileDev:
+		opts.NetworkMode = "bridge"
+		opts.ReadOnlyRootfs = false
+	case runtime.ProfileStandard:
+		opts.NetworkMode = "none"
+		opts.ReadOnlyRootfs = true
+	case runtime.ProfileHardened:
+		opts.NetworkMode = "none"
+		opts.ReadOnlyRootfs = true
+	}
+
+	if limits.MemoryBytes > 0 {
+		opts.MemoryLimit = limits.MemoryBytes
+	}
+	if limits.CPUQuotaMillis > 0 {
+		opts.CPUQuota = limits.CPUQuotaMillis * 1000
+	}
+	if limits.PidsMax > 0 {
+		opts.PidsLimit = limits.PidsMax
+	}
+	if limits.DiskBytes > 0 {
+		opts.DiskBytes = limits.DiskBytes
+	}
+
+	return opts
+}
+
+// extractOutValue extracts the __out value from stdout if present.
+func extractOutValue(stdout string) any {
+	lines := strings.Split(stdout, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "__OUT__:") {
+			jsonStr := strings.TrimPrefix(line, "__OUT__:")
+			var value any
+			if err := json.Unmarshal([]byte(jsonStr), &value); err == nil {
+				return value
+			}
+			return jsonStr
+		}
+		if strings.HasPrefix(line, "{") && strings.HasSuffix(line, "}") {
+			var payload map[string]any
+			if err := json.Unmarshal([]byte(line), &payload); err == nil {
+				if value, ok := payload["__out"]; ok {
+					return value
+				}
+			}
+		}
+	}
+	return nil
+}

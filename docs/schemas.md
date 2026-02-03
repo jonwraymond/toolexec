@@ -9,6 +9,7 @@ This page documents:
 - Input/Output schema requirements as enforced by the runner
 - JSON Schema dialect support and limitations
 - Execution payload contracts (RunResult, StreamEvent, ChainStep)
+- Runtime execution results (ExecuteResult, BackendInfo)
 - Recommended schema patterns
 
 For full schema details, see **toolfoundation**’s schema docs.
@@ -34,7 +35,7 @@ For full schema details, see **toolfoundation**’s schema docs.
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `namespace` | No | Tool ID is `namespace:name` when set |
+| `namespace` | No | Tool ID is `namespace:name:version` when version is set (otherwise `namespace:name`) |
 | `version` | No | SemVer (`v1.2.3` or `1.2.3`) |
 | `tags` | No | Normalized tags for discovery |
 
@@ -85,6 +86,27 @@ Transport-agnostic streaming envelope:
 | `toolId` | string | Canonical tool ID |
 | `args` | map | Tool arguments |
 | `usePrevious` | bool | Inject prior result into `args["previous"]` |
+
+### ExecuteResult (`runtime.ExecuteResult`)
+
+Result of executing code via a runtime backend:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `value` | any | Final value (from `__out` convention) |
+| `stdout` | string | Captured stdout |
+| `stderr` | string | Captured stderr |
+| `toolCalls` | list | Tool invocation trace |
+| `duration` | duration | Total execution time |
+| `backend` | `runtime.BackendInfo` | Backend details + readiness |
+
+### BackendInfo (`runtime.BackendInfo`)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `kind` | string | Backend kind (`docker`, `wasm`, etc.) |
+| `readiness` | string | `prod`, `beta`, or `stub` |
+| `details` | map | Backend-specific metadata |
 
 ## Recommended “no parameters” schema
 

@@ -182,8 +182,6 @@ gateway := direct.New(direct.Config{
 rt := runtime.NewDefaultRuntime(runtime.RuntimeConfig{
     Backends: map[runtime.SecurityProfile]runtime.Backend{
         runtime.ProfileDev: unsafe.New(unsafe.Config{RequireOptIn: true}),
-        // runtime.ProfileStandard: docker.New(dockerConfig),
-        // runtime.ProfileHardened: gvisor.New(gvisorConfig),
     },
     DefaultProfile: runtime.ProfileDev,
 })
@@ -202,8 +200,27 @@ result, err := rt.Execute(ctx, runtime.ExecuteRequest{
 })
 ```
 
-For container isolation, use `runtime/backend/docker` with `ProfileStandard`.
-For maximum isolation, use `runtime/backend/gvisor` with `ProfileHardened`.
+For container isolation, use `runtime/backend/docker` or `runtime/backend/containerd`
+with `ProfileStandard`.
+
+For maximum isolation, use `runtime/backend/gvisor`, `runtime/backend/kata`, or
+`runtime/backend/firecracker` with `ProfileHardened`.
+
+### WASM Execution Input
+
+The WASM backend expects a compiled module provided via `ExecuteRequest.Metadata`:
+
+```go
+req := runtime.ExecuteRequest{
+    Language: "wasm",
+    Code:     "ignored for wasm",
+    Gateway:  gateway,
+    Metadata: map[string]any{
+        "wasm_module": []byte{0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00},
+        // or "wasm_module_b64": "<base64-encoded module bytes>"
+    },
+}
+```
 
 ## Execution Flow
 

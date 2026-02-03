@@ -141,7 +141,8 @@ func (b *Backend) Execute(ctx context.Context, req runtime.ExecuteRequest) (runt
 
 	result.Duration = time.Since(start)
 	result.Backend = runtime.BackendInfo{
-		Kind: runtime.BackendUnsafeHost,
+		Kind:      runtime.BackendUnsafeHost,
+		Readiness: runtime.ReadinessProd,
 		Details: map[string]any{
 			"mode": string(b.mode),
 		},

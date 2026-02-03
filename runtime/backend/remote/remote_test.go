@@ -12,58 +12,6 @@ import (
 	"github.com/jonwraymond/toolexec/runtime"
 )
 
-func TestBackendImplementsInterface(t *testing.T) {
-	t.Helper()
-	var _ runtime.Backend = (*Backend)(nil)
-}
-
-func TestBackendKind(t *testing.T) {
-	b := New(Config{Endpoint: "http://localhost:8080"})
-	if b.Kind() != runtime.BackendRemote {
-		t.Errorf("Kind() = %v, want %v", b.Kind(), runtime.BackendRemote)
-	}
-}
-
-func TestBackendDefaults(t *testing.T) {
-	b := New(Config{Endpoint: "http://localhost:8080"})
-	if b.timeoutOverhead != 5*time.Second {
-		t.Errorf("timeoutOverhead = %v, want %v", b.timeoutOverhead, 5*time.Second)
-	}
-	if b.maxRetries != 3 {
-		t.Errorf("maxRetries = %d, want %d", b.maxRetries, 3)
-	}
-}
-
-func TestBackendRequiresGateway(t *testing.T) {
-	b := New(Config{Endpoint: "http://localhost:8080"})
-	ctx := context.Background()
-	req := runtime.ExecuteRequest{
-		Code:    "test",
-		Gateway: nil,
-	}
-	_, err := b.Execute(ctx, req)
-	if !errors.Is(err, runtime.ErrMissingGateway) {
-		t.Errorf("Execute() without gateway error = %v, want %v", err, runtime.ErrMissingGateway)
-	}
-}
-
-func TestBackendRequiresEndpoint(t *testing.T) {
-	b := New(Config{Endpoint: ""}) // No endpoint
-	ctx := context.Background()
-
-	// Create a mock gateway
-	gw := &mockGateway{}
-	req := runtime.ExecuteRequest{
-		Code:    "test",
-		Gateway: gw,
-	}
-	_, err := b.Execute(ctx, req)
-	if !errors.Is(err, ErrRemoteNotAvailable) {
-		t.Errorf("Execute() without endpoint error = %v, want %v", err, ErrRemoteNotAvailable)
-	}
-}
-
-// mockGateway implements runtime.ToolGateway for testing
 type mockGateway struct{}
 
 func (m *mockGateway) SearchTools(_ context.Context, _ string, _ int) ([]index.Summary, error) {
@@ -83,4 +31,87 @@ func (m *mockGateway) RunTool(_ context.Context, _ string, _ map[string]any) (ru
 }
 func (m *mockGateway) RunChain(_ context.Context, _ []run.ChainStep) (run.RunResult, []run.StepResult, error) {
 	return run.RunResult{}, nil, nil
+}
+
+type stubClient struct {
+	response RemoteResponse
+	err      error
+	seen     RemoteRequest
+}
+
+func (s *stubClient) Execute(_ context.Context, req RemoteRequest) (RemoteResponse, error) {
+	s.seen = req
+	if s.err != nil {
+		return RemoteResponse{}, s.err
+	}
+	return s.response, nil
+}
+
+func (s *stubClient) Endpoint() string {
+	return "http://stub"
+}
+
+func TestBackendRequiresClient(t *testing.T) {
+	b := New(Config{})
+	_, err := b.Execute(context.Background(), runtime.ExecuteRequest{
+		Code:    "return 1",
+		Gateway: &mockGateway{},
+	})
+	if !errors.Is(err, ErrClientNotConfigured) {
+		t.Fatalf("expected ErrClientNotConfigured, got %v", err)
+	}
+}
+
+func TestBackendExecuteSuccess(t *testing.T) {
+	client := &stubClient{
+		response: RemoteResponse{
+			Result: &ExecuteResultPayload{
+				Value:          map[string]any{"answer": 42},
+				Stdout:         "ok",
+				DurationMillis: 12,
+			},
+		},
+	}
+
+	b := New(Config{
+		Client:          client,
+		GatewayEndpoint: "http://gateway",
+		GatewayToken:    "token",
+		EnableStreaming: true,
+	})
+
+	result, err := b.Execute(context.Background(), runtime.ExecuteRequest{
+		Code:    "return 42",
+		Gateway: &mockGateway{},
+		Timeout: 2 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("Execute error: %v", err)
+	}
+	if result.Stdout != "ok" {
+		t.Errorf("Stdout = %q, want %q", result.Stdout, "ok")
+	}
+	if val, ok := result.Value.(map[string]any); !ok || val["answer"] != 42 {
+		t.Errorf("Value = %#v, want answer=42", result.Value)
+	}
+	if client.seen.Gateway == nil || client.seen.Gateway.URL != "http://gateway" {
+		t.Fatalf("gateway descriptor not set")
+	}
+}
+
+func TestBackendExecuteErrorResponse(t *testing.T) {
+	client := &stubClient{
+		response: RemoteResponse{Error: &RemoteError{Code: "unauthorized", Message: "nope"}},
+	}
+	b := New(Config{Client: client})
+	_, err := b.Execute(context.Background(), runtime.ExecuteRequest{
+		Code:    "return 0",
+		Gateway: &mockGateway{},
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.Is(err, ErrRemoteExecutionFailed) {
+		t.Fatalf("expected ErrRemoteExecutionFailed, got %v", err)
+	}
 }

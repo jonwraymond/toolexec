@@ -1,4 +1,4 @@
-package kubernetes
+package proxmox
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/toolexec/run"
 	"github.com/jonwraymond/toolexec/runtime"
+	"github.com/jonwraymond/toolexec/runtime/backend/remote"
 )
 
 func TestBackendImplementsInterface(t *testing.T) {
@@ -18,18 +19,8 @@ func TestBackendImplementsInterface(t *testing.T) {
 
 func TestBackendKind(t *testing.T) {
 	b := New(Config{})
-	if b.Kind() != runtime.BackendKubernetes {
-		t.Errorf("Kind() = %v, want %v", b.Kind(), runtime.BackendKubernetes)
-	}
-}
-
-func TestBackendDefaults(t *testing.T) {
-	b := New(Config{})
-	if b.namespace != "default" {
-		t.Errorf("namespace = %q, want %q", b.namespace, "default")
-	}
-	if b.image != "toolruntime-sandbox:latest" {
-		t.Errorf("image = %q, want %q", b.image, "toolruntime-sandbox:latest")
+	if b.Kind() != runtime.BackendProxmoxLXC {
+		t.Errorf("Kind() = %v, want %v", b.Kind(), runtime.BackendProxmoxLXC)
 	}
 }
 
@@ -67,8 +58,25 @@ func (m *mockGateway) RunChain(_ context.Context, _ []run.ChainStep) (run.RunRes
 	return run.RunResult{}, nil, nil
 }
 
+func TestBackendRequiresRuntimeClient(t *testing.T) {
+	b := New(Config{Node: "node-1", VMID: 100})
+	ctx := context.Background()
+	req := runtime.ExecuteRequest{
+		Code:    "test",
+		Gateway: &mockGateway{},
+	}
+	_, err := b.Execute(ctx, req)
+	if !errors.Is(err, ErrRuntimeNotConfigured) {
+		t.Errorf("Execute() missing runtime client error = %v, want %v", err, ErrRuntimeNotConfigured)
+	}
+}
+
 func TestBackendRequiresClient(t *testing.T) {
-	b := New(Config{})
+	b := New(Config{
+		Node:          "node-1",
+		VMID:          100,
+		RuntimeClient: stubRemoteClient{},
+	})
 	ctx := context.Background()
 	req := runtime.ExecuteRequest{
 		Code:    "test",
@@ -76,6 +84,12 @@ func TestBackendRequiresClient(t *testing.T) {
 	}
 	_, err := b.Execute(ctx, req)
 	if !errors.Is(err, ErrClientNotConfigured) {
-		t.Errorf("Execute() without client error = %v, want %v", err, ErrClientNotConfigured)
+		t.Errorf("Execute() missing client error = %v, want %v", err, ErrClientNotConfigured)
 	}
+}
+
+type stubRemoteClient struct{}
+
+func (s stubRemoteClient) Execute(_ context.Context, _ remote.RemoteRequest) (remote.RemoteResponse, error) {
+	return remote.RemoteResponse{}, nil
 }
