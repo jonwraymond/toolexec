@@ -226,11 +226,11 @@ func (b *Backend) backendInfo(profile runtime.SecurityProfile) runtime.BackendIn
 
 func (b *Backend) buildSpec(req runtime.ExecuteRequest) (MicroVMSpec, error) {
 	spec := MicroVMSpec{
-		Image:      b.image,
-		Resources:  VMResourceSpec{VCPUCount: b.vcpuCount, MemSizeMB: b.memSizeMB},
-		Config:     VMConfig{KernelPath: b.kernelPath, RootfsPath: b.rootfsPath, SocketPath: b.socketPath},
-		Timeout:    req.Timeout,
-		Labels:     map[string]string{"runtime.backend": string(runtime.BackendFirecracker)},
+		Image:     b.image,
+		Resources: VMResourceSpec{VCPUCount: b.vcpuCount, MemSizeMB: b.memSizeMB},
+		Config:    VMConfig{KernelPath: b.kernelPath, RootfsPath: b.rootfsPath, SocketPath: b.socketPath},
+		Timeout:   req.Timeout,
+		Labels:    map[string]string{"runtime.backend": string(runtime.BackendFirecracker)},
 	}
 	if err := spec.Validate(); err != nil {
 		return MicroVMSpec{}, err

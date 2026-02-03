@@ -230,8 +230,8 @@ func (b *Backend) buildSpec(image string, req runtime.ExecuteRequest, profile ru
 	opts := b.containerOptions(profile, req.Limits)
 
 	spec := ContainerSpec{
-		Image:     image,
-		Runtime:   b.runtime,
+		Image:   image,
+		Runtime: b.runtime,
 		Resources: ResourceSpec{
 			MemoryBytes: opts.MemoryLimit,
 			CPUQuota:    opts.CPUQuota,
@@ -258,14 +258,14 @@ func (b *Backend) buildSpec(image string, req runtime.ExecuteRequest, profile ru
 }
 
 type containerOptions struct {
-	NetworkMode   string
+	NetworkMode    string
 	ReadOnlyRootfs bool
-	MemoryLimit   int64
-	CPUQuota      int64
-	PidsLimit     int64
-	DiskBytes     int64
+	MemoryLimit    int64
+	CPUQuota       int64
+	PidsLimit      int64
+	DiskBytes      int64
 	SeccompProfile string
-	User          string
+	User           string
 }
 
 func (b *Backend) containerOptions(profile runtime.SecurityProfile, limits runtime.Limits) containerOptions {

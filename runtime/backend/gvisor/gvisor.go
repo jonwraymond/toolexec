@@ -236,14 +236,14 @@ func (b *Backend) buildSpec(image string, req runtime.ExecuteRequest, profile ru
 	opts := b.sandboxOptions(profile, req.Limits)
 
 	spec := SandboxSpec{
-		Image:      image,
-		Platform:   b.platform,
-		RunscPath:  b.runscPath,
-		RootDir:    b.rootDir,
-		Resources:  ResourceSpec{MemoryBytes: opts.MemoryLimit, CPUQuota: opts.CPUQuota, PidsLimit: opts.PidsLimit, DiskBytes: opts.DiskBytes},
-		Security:   SecuritySpec{User: opts.User, ReadOnlyRootfs: opts.ReadOnlyRootfs, NetworkMode: opts.NetworkMode},
-		Timeout:    req.Timeout,
-		Labels:     map[string]string{"runtime.profile": string(profile), "runtime.backend": string(runtime.BackendGVisor)},
+		Image:     image,
+		Platform:  b.platform,
+		RunscPath: b.runscPath,
+		RootDir:   b.rootDir,
+		Resources: ResourceSpec{MemoryBytes: opts.MemoryLimit, CPUQuota: opts.CPUQuota, PidsLimit: opts.PidsLimit, DiskBytes: opts.DiskBytes},
+		Security:  SecuritySpec{User: opts.User, ReadOnlyRootfs: opts.ReadOnlyRootfs, NetworkMode: opts.NetworkMode},
+		Timeout:   req.Timeout,
+		Labels:    map[string]string{"runtime.profile": string(profile), "runtime.backend": string(runtime.BackendGVisor)},
 	}
 
 	if err := spec.Validate(); err != nil {
