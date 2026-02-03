@@ -15,6 +15,22 @@ linters:
     - unconvert
     - unparam
     - depguard
+  settings:
+    depguard:
+      rules:
+        core-integrations:
+          list-mode: lax
+          deny:
+            - pkg: k8s.io/
+              desc: "Use toolexec-integrations/kubernetes instead of client-go in core"
+            - pkg: github.com/docker/
+              desc: "Docker SDK is not allowed in toolexec core"
+            - pkg: github.com/containerd/
+              desc: "containerd SDK is not allowed in toolexec core"
+            - pkg: github.com/firecracker-microvm/
+              desc: "Firecracker SDK is not allowed in toolexec core"
+            - pkg: github.com/tetratelabs/wazero
+              desc: "WASM runtimes belong in integrations"
 
 formatters:
   enable:
@@ -24,23 +40,6 @@ formatters:
     goimports:
       local-prefixes:
         - github.com/jonwraymond
-
-linters-settings:
-  depguard:
-    rules:
-      core-integrations:
-        list-mode: lax
-        deny:
-          - pkg: k8s.io/
-            desc: "Use toolexec-integrations/kubernetes instead of client-go in core"
-          - pkg: github.com/docker/
-            desc: "Docker SDK is not allowed in toolexec core"
-          - pkg: github.com/containerd/
-            desc: "containerd SDK is not allowed in toolexec core"
-          - pkg: github.com/firecracker-microvm/
-            desc: "Firecracker SDK is not allowed in toolexec core"
-          - pkg: github.com/tetratelabs/wazero
-            desc: "WASM runtimes belong in integrations"
 
 issues:
   max-issues-per-linter: 0
