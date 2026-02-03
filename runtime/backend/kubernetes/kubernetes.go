@@ -62,26 +62,8 @@ type Config struct {
 	// ServiceAccount is the service account for execution pods.
 	ServiceAccount string
 
-	// KubeconfigPath points to the kubeconfig file for out-of-cluster access.
-	KubeconfigPath string
-
-	// KubeContext overrides the kubeconfig context.
-	KubeContext string
-
-	// InCluster uses in-cluster configuration when true.
-	InCluster bool
-
-	// PollInterval controls how often job status is checked.
-	PollInterval time.Duration
-
-	// JobTTL controls job cleanup TTLSecondsAfterFinished.
-	JobTTL time.Duration
-
-	// JobPrefix prefixes job names for executions.
-	JobPrefix string
-
 	// Client executes pod specs.
-	// If nil and kubeconfig/in-cluster config is available, a default client is created lazily.
+	// Required. Provide a PodRunner from an integration package.
 	Client PodRunner
 
 	// ImageResolver optionally resolves images before execution.
@@ -100,7 +82,6 @@ type Backend struct {
 	image            string
 	runtimeClassName string
 	serviceAccount   string
-	clientConfig     *ClientConfig
 	client           PodRunner
 	resolver         ImageResolver
 	health           HealthChecker
@@ -119,24 +100,11 @@ func New(cfg Config) *Backend {
 		image = "toolruntime-sandbox:latest"
 	}
 
-	var clientConfig *ClientConfig
-	if cfg.Client == nil && (cfg.KubeconfigPath != "" || cfg.InCluster) {
-		clientConfig = &ClientConfig{
-			KubeconfigPath: cfg.KubeconfigPath,
-			Context:        cfg.KubeContext,
-			InCluster:      cfg.InCluster,
-			PollInterval:   cfg.PollInterval,
-			JobTTL:         cfg.JobTTL,
-			JobPrefix:      cfg.JobPrefix,
-		}
-	}
-
 	return &Backend{
 		namespace:        namespace,
 		image:            image,
 		runtimeClassName: cfg.RuntimeClassName,
 		serviceAccount:   cfg.ServiceAccount,
-		clientConfig:     clientConfig,
 		client:           cfg.Client,
 		resolver:         cfg.ImageResolver,
 		health:           cfg.HealthChecker,
@@ -231,20 +199,14 @@ var _ runtime.Backend = (*Backend)(nil)
 
 func (b *Backend) ensureClient() (PodRunner, error) {
 	if b.client != nil {
+		if b.health == nil {
+			if checker, ok := b.client.(HealthChecker); ok {
+				b.health = checker
+			}
+		}
 		return b.client, nil
 	}
-	if b.clientConfig == nil {
-		return nil, ErrClientNotConfigured
-	}
-	client, err := NewClient(*b.clientConfig, b.logger)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrClusterUnavailable, err)
-	}
-	b.client = client
-	if b.health == nil {
-		b.health = client
-	}
-	return b.client, nil
+	return nil, ErrClientNotConfigured
 }
 
 func (b *Backend) backendInfo(profile runtime.SecurityProfile) runtime.BackendInfo {

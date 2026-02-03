@@ -25,7 +25,7 @@ var (
 	ErrAuthNotConfigured = errors.New("proxmox api token not configured")
 
 	// ErrRuntimeNotConfigured is returned when no runtime endpoint is configured.
-	ErrRuntimeNotConfigured = errors.New("runtime endpoint not configured")
+	ErrRuntimeNotConfigured = errors.New("runtime client not configured")
 
 	// ErrLXCNotRunning is returned when the LXC container is not running.
 	ErrLXCNotRunning = errors.New("lxc container not running")
@@ -44,29 +44,11 @@ type Logger interface {
 
 // Config configures a Proxmox LXC backend.
 type Config struct {
-	// Endpoint is the Proxmox API base URL (https://host:8006/api2/json).
-	Endpoint string
-
-	// TokenID is the user@realm!tokenid portion of the API token.
-	TokenID string
-
-	// TokenSecret is the API token secret UUID.
-	TokenSecret string
-
 	// Node is the Proxmox node name.
 	Node string
 
 	// VMID is the LXC container ID.
 	VMID int
-
-	// RuntimeEndpoint is the HTTP endpoint of the runtime service inside the LXC container.
-	RuntimeEndpoint string
-
-	// RuntimeToken is an optional token for the runtime service.
-	RuntimeToken string
-
-	// TLSSkipVerify disables TLS verification for the Proxmox API.
-	TLSSkipVerify bool
 
 	// AutoStart controls whether the backend starts the LXC container if stopped.
 	// Default: true
@@ -83,7 +65,18 @@ type Config struct {
 	PollInterval time.Duration
 
 	// Client overrides the default API client.
+	// Required. Provide an APIClient from an integration package.
 	Client APIClient
+
+	// RuntimeClient executes code in the LXC runtime service.
+	// Required. Provide a RemoteClient from an integration package.
+	RuntimeClient remote.RemoteClient
+
+	// RuntimeGatewayEndpoint is the tool gateway URL the runtime can use.
+	RuntimeGatewayEndpoint string
+
+	// RuntimeGatewayToken is an optional token for the tool gateway.
+	RuntimeGatewayToken string
 
 	// Logger is an optional logger for backend events.
 	Logger Logger
@@ -91,18 +84,18 @@ type Config struct {
 
 // Backend executes code via Proxmox LXC using a runtime service inside the container.
 type Backend struct {
-	clientConfig *ClientConfig
-	client       APIClient
-	runtime      *remote.Backend
-	node         string
-	vmid         int
-	runtimeURL   string
-	runtimeToken string
-	autoStart    bool
-	autoStop     bool
-	startTimeout time.Duration
-	pollInterval time.Duration
-	logger       Logger
+	client                 APIClient
+	runtime                *remote.Backend
+	runtimeClient          remote.RemoteClient
+	runtimeGatewayEndpoint string
+	runtimeGatewayToken    string
+	node                   string
+	vmid                   int
+	autoStart              bool
+	autoStop               bool
+	startTimeout           time.Duration
+	pollInterval           time.Duration
+	logger                 Logger
 }
 
 // New creates a new Proxmox LXC backend with the given configuration.
@@ -118,28 +111,18 @@ func New(cfg Config) *Backend {
 		poll = 2 * time.Second
 	}
 
-	var clientConfig *ClientConfig
-	if cfg.Client == nil && cfg.Endpoint != "" {
-		clientConfig = &ClientConfig{
-			Endpoint:      cfg.Endpoint,
-			TokenID:       cfg.TokenID,
-			TokenSecret:   cfg.TokenSecret,
-			TLSSkipVerify: cfg.TLSSkipVerify,
-		}
-	}
-
 	return &Backend{
-		clientConfig: clientConfig,
-		client:       cfg.Client,
-		node:         cfg.Node,
-		vmid:         cfg.VMID,
-		runtimeURL:   cfg.RuntimeEndpoint,
-		runtimeToken: cfg.RuntimeToken,
-		autoStart:    autoStart,
-		autoStop:     autoStop,
-		startTimeout: startTimeout,
-		pollInterval: poll,
-		logger:       cfg.Logger,
+		client:                 cfg.Client,
+		runtimeClient:          cfg.RuntimeClient,
+		runtimeGatewayEndpoint: cfg.RuntimeGatewayEndpoint,
+		runtimeGatewayToken:    cfg.RuntimeGatewayToken,
+		node:                   cfg.Node,
+		vmid:                   cfg.VMID,
+		autoStart:              autoStart,
+		autoStop:               autoStop,
+		startTimeout:           startTimeout,
+		pollInterval:           poll,
+		logger:                 cfg.Logger,
 	}
 }
 
@@ -153,7 +136,7 @@ func (b *Backend) Execute(ctx context.Context, req runtime.ExecuteRequest) (runt
 	if err := req.Validate(); err != nil {
 		return runtime.ExecuteResult{}, err
 	}
-	if b.runtimeURL == "" {
+	if b.runtimeClient == nil {
 		return runtime.ExecuteResult{}, ErrRuntimeNotConfigured
 	}
 
@@ -170,9 +153,11 @@ func (b *Backend) Execute(ctx context.Context, req runtime.ExecuteRequest) (runt
 
 	if b.runtime == nil {
 		b.runtime = remote.New(remote.Config{
-			Endpoint:        b.runtimeURL,
-			AuthToken:       b.runtimeToken,
+			Client:          b.runtimeClient,
+			GatewayEndpoint: b.runtimeGatewayEndpoint,
+			GatewayToken:    b.runtimeGatewayToken,
 			EnableStreaming: true,
+			Logger:          b.logger,
 		})
 	}
 
@@ -194,15 +179,7 @@ func (b *Backend) ensureClient() (APIClient, error) {
 	if b.client != nil {
 		return b.client, nil
 	}
-	if b.clientConfig == nil {
-		return nil, ErrClientNotConfigured
-	}
-	client, err := NewClient(*b.clientConfig, b.logger)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrProxmoxNotAvailable, err)
-	}
-	b.client = client
-	return b.client, nil
+	return nil, ErrClientNotConfigured
 }
 
 func (b *Backend) ensureRunning(ctx context.Context, client APIClient) error {
@@ -249,15 +226,20 @@ func (b *Backend) ensureRunning(ctx context.Context, client APIClient) error {
 }
 
 func (b *Backend) backendInfo(profile runtime.SecurityProfile) runtime.BackendInfo {
+	details := map[string]any{
+		"node":    b.node,
+		"vmid":    b.vmid,
+		"profile": string(profile),
+	}
+	if provider, ok := b.runtimeClient.(interface{ Endpoint() string }); ok {
+		if endpoint := provider.Endpoint(); endpoint != "" {
+			details["endpoint"] = endpoint
+		}
+	}
 	return runtime.BackendInfo{
 		Kind:      runtime.BackendProxmoxLXC,
 		Readiness: runtime.ReadinessBeta,
-		Details: map[string]any{
-			"node":     b.node,
-			"vmid":     b.vmid,
-			"endpoint": b.runtimeURL,
-			"profile":  string(profile),
-		},
+		Details:   details,
 	}
 }
 

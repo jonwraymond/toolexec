@@ -9,6 +9,7 @@ import (
 	"github.com/jonwraymond/tooldiscovery/tooldoc"
 	"github.com/jonwraymond/toolexec/run"
 	"github.com/jonwraymond/toolexec/runtime"
+	"github.com/jonwraymond/toolexec/runtime/backend/remote"
 )
 
 func TestBackendImplementsInterface(t *testing.T) {
@@ -57,7 +58,7 @@ func (m *mockGateway) RunChain(_ context.Context, _ []run.ChainStep) (run.RunRes
 	return run.RunResult{}, nil, nil
 }
 
-func TestBackendRequiresRuntimeEndpoint(t *testing.T) {
+func TestBackendRequiresRuntimeClient(t *testing.T) {
 	b := New(Config{Node: "node-1", VMID: 100})
 	ctx := context.Background()
 	req := runtime.ExecuteRequest{
@@ -66,15 +67,15 @@ func TestBackendRequiresRuntimeEndpoint(t *testing.T) {
 	}
 	_, err := b.Execute(ctx, req)
 	if !errors.Is(err, ErrRuntimeNotConfigured) {
-		t.Errorf("Execute() missing runtime endpoint error = %v, want %v", err, ErrRuntimeNotConfigured)
+		t.Errorf("Execute() missing runtime client error = %v, want %v", err, ErrRuntimeNotConfigured)
 	}
 }
 
 func TestBackendRequiresClient(t *testing.T) {
 	b := New(Config{
-		Node:            "node-1",
-		VMID:            100,
-		RuntimeEndpoint: "http://runtime",
+		Node:          "node-1",
+		VMID:          100,
+		RuntimeClient: stubRemoteClient{},
 	})
 	ctx := context.Background()
 	req := runtime.ExecuteRequest{
@@ -85,4 +86,10 @@ func TestBackendRequiresClient(t *testing.T) {
 	if !errors.Is(err, ErrClientNotConfigured) {
 		t.Errorf("Execute() missing client error = %v, want %v", err, ErrClientNotConfigured)
 	}
+}
+
+type stubRemoteClient struct{}
+
+func (s stubRemoteClient) Execute(_ context.Context, _ remote.RemoteRequest) (remote.RemoteResponse, error) {
+	return remote.RemoteResponse{}, nil
 }

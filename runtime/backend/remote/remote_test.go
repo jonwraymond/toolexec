@@ -2,10 +2,7 @@ package remote
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
-	"net/http/httptest"
+	"errors"
 	"testing"
 	"time"
 
@@ -36,44 +33,54 @@ func (m *mockGateway) RunChain(_ context.Context, _ []run.ChainStep) (run.RunRes
 	return run.RunResult{}, nil, nil
 }
 
+type stubClient struct {
+	response RemoteResponse
+	err      error
+	seen     RemoteRequest
+}
+
+func (s *stubClient) Execute(_ context.Context, req RemoteRequest) (RemoteResponse, error) {
+	s.seen = req
+	if s.err != nil {
+		return RemoteResponse{}, s.err
+	}
+	return s.response, nil
+}
+
+func (s *stubClient) Endpoint() string {
+	return "http://stub"
+}
+
+func TestBackendRequiresClient(t *testing.T) {
+	b := New(Config{})
+	_, err := b.Execute(context.Background(), runtime.ExecuteRequest{
+		Code:    "return 1",
+		Gateway: &mockGateway{},
+	})
+	if !errors.Is(err, ErrClientNotConfigured) {
+		t.Fatalf("expected ErrClientNotConfigured, got %v", err)
+	}
+}
+
 func TestBackendExecuteSuccess(t *testing.T) {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		if got := r.Header.Get("Authorization"); got != "Bearer token" {
-			t.Errorf("Authorization header = %q, want %q", got, "Bearer token")
-		}
-		if sig := r.Header.Get("X-Toolruntime-Signature"); sig == "" {
-			t.Error("expected signature header")
-		}
-
-		var req remoteRequest
-		if err := json.Unmarshal(body, &req); err != nil {
-			t.Fatalf("decode request: %v", err)
-		}
-		if req.Request.Code != "return 42" {
-			t.Errorf("request code = %q", req.Request.Code)
-		}
-
-		resp := remoteResponse{
-			Result: &executeResultPayload{
+	client := &stubClient{
+		response: RemoteResponse{
+			Result: &ExecuteResultPayload{
 				Value:          map[string]any{"answer": 42},
 				Stdout:         "ok",
 				DurationMillis: 12,
 			},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(resp)
-	}))
-	defer srv.Close()
+		},
+	}
 
 	b := New(Config{
-		Endpoint:  srv.URL,
-		AuthToken: "token",
+		Client:          client,
+		GatewayEndpoint: "http://gateway",
+		GatewayToken:    "token",
+		EnableStreaming: true,
 	})
 
-	ctx := context.Background()
-	result, err := b.Execute(ctx, runtime.ExecuteRequest{
+	result, err := b.Execute(context.Background(), runtime.ExecuteRequest{
 		Code:    "return 42",
 		Gateway: &mockGateway{},
 		Timeout: 2 * time.Second,
@@ -84,23 +91,19 @@ func TestBackendExecuteSuccess(t *testing.T) {
 	if result.Stdout != "ok" {
 		t.Errorf("Stdout = %q, want %q", result.Stdout, "ok")
 	}
-	if val, ok := result.Value.(map[string]any); !ok || val["answer"] != float64(42) {
+	if val, ok := result.Value.(map[string]any); !ok || val["answer"] != 42 {
 		t.Errorf("Value = %#v, want answer=42", result.Value)
+	}
+	if client.seen.Gateway == nil || client.seen.Gateway.URL != "http://gateway" {
+		t.Fatalf("gateway descriptor not set")
 	}
 }
 
 func TestBackendExecuteErrorResponse(t *testing.T) {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		resp := remoteResponse{
-			Error: &remoteError{Code: "unauthorized", Message: "nope"},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(resp)
-	}))
-	defer srv.Close()
-
-	b := New(Config{Endpoint: srv.URL})
+	client := &stubClient{
+		response: RemoteResponse{Error: &RemoteError{Code: "unauthorized", Message: "nope"}},
+	}
+	b := New(Config{Client: client})
 	_, err := b.Execute(context.Background(), runtime.ExecuteRequest{
 		Code:    "return 0",
 		Gateway: &mockGateway{},
@@ -108,42 +111,7 @@ func TestBackendExecuteErrorResponse(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-}
-
-func TestBackendExecuteStreaming(t *testing.T) {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("event: stdout\n"))
-		_, _ = w.Write([]byte("data: hello\n\n"))
-		result := executeResultPayload{
-			Value:          "ok",
-			Stdout:         "hello",
-			DurationMillis: 5,
-		}
-		data, _ := json.Marshal(result)
-		_, _ = w.Write([]byte("event: result\n"))
-		_, _ = w.Write([]byte("data: " + string(data) + "\n\n"))
-	}))
-	defer srv.Close()
-
-	b := New(Config{
-		Endpoint:        srv.URL,
-		EnableStreaming: true,
-	})
-
-	res, err := b.Execute(context.Background(), runtime.ExecuteRequest{
-		Code:    "return",
-		Gateway: &mockGateway{},
-	})
-	if err != nil {
-		t.Fatalf("Execute error: %v", err)
-	}
-	if res.Stdout != "hello" {
-		t.Errorf("Stdout = %q, want %q", res.Stdout, "hello")
-	}
-	if res.Value != "ok" {
-		t.Errorf("Value = %#v, want %q", res.Value, "ok")
+	if !errors.Is(err, ErrRemoteExecutionFailed) {
+		t.Fatalf("expected ErrRemoteExecutionFailed, got %v", err)
 	}
 }

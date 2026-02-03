@@ -126,19 +126,24 @@ Readiness tiers:
 - **beta**: usable, still evolving
 - **stub**: placeholder or incomplete
 
+Concrete runtime clients (Kubernetes, Proxmox, remote HTTP) live in
+`toolexec-integrations` and are injected into `toolexec` core backends via
+interfaces (`PodRunner`, `APIClient`, `RemoteClient`). This keeps the core
+dependency-light while integrations remain opt-in.
+
 | BackendKind | Readiness | Isolation | Requirements | Notes |
 |-------------|-----------|-----------|--------------|-------|
 | `BackendUnsafeHost` | prod | None | Go toolchain (subprocess mode) | Dev-only, explicit opt-in supported |
 | `BackendDocker` | prod | Container | Docker daemon + ContainerRunner | Standard isolation |
 | `BackendContainerd` | beta | Container | containerd client | Infrastructure-native |
-| `BackendKubernetes` | beta | Pod/Job | kubeconfig/client | Cluster execution |
+| `BackendKubernetes` | beta | Pod/Job | `toolexec-integrations/kubernetes` + kubeconfig | Cluster execution |
 | `BackendGVisor` | beta | Sandbox | gVisor/runsc (`io.containerd.runsc.v1`) | Stronger isolation |
 | `BackendKata` | beta | VM | Kata runtime (`io.containerd.kata.v2`) | VM-level isolation |
 | `BackendFirecracker` | beta | MicroVM | Firecracker runtime (`aws.firecracker`) | Strongest isolation |
 | `BackendWASM` | beta | Sandbox | wazero | In-process WASM |
 | `BackendTemporal` | stub | Workflow | Temporal client | Orchestrated execution |
-| `BackendRemote` | beta | Remote | HTTP service | External runtime with signed requests |
-| `BackendProxmoxLXC` | beta | Container | Proxmox API + runtime service | LXC-backed runtime service |
+| `BackendRemote` | beta | Remote | `toolexec-integrations/remotehttp` | External runtime with signed requests |
+| `BackendProxmoxLXC` | beta | Container | `toolexec-integrations/proxmox` + runtime client | LXC-backed runtime service |
 
 ## Toolcode ↔ Runtime Contract
 
