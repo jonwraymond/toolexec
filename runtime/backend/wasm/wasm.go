@@ -4,9 +4,11 @@ package wasm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/jonwraymond/toolexec/runtime"
@@ -270,7 +272,8 @@ func (b *Backend) buildSpec(req runtime.ExecuteRequest, profile runtime.Security
 // backendInfo returns BackendInfo for the given profile.
 func (b *Backend) backendInfo(profile runtime.SecurityProfile) runtime.BackendInfo {
 	return runtime.BackendInfo{
-		Kind: runtime.BackendWASM,
+		Kind:      runtime.BackendWASM,
+		Readiness: runtime.ReadinessBeta,
 		Details: map[string]any{
 			"runtime":        b.runtime,
 			"profile":        string(profile),
@@ -282,9 +285,30 @@ func (b *Backend) backendInfo(profile runtime.SecurityProfile) runtime.BackendIn
 
 // extractOutValue extracts the __out value from stdout if present.
 // This follows the toolruntime convention for capturing return values.
-func extractOutValue(_ string) any {
-	// TODO: Implement __out extraction from stdout
-	// The gateway proxy will output JSON with __out key
+func extractOutValue(stdout string) any {
+	lines := strings.Split(stdout, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "__OUT__:") {
+			jsonStr := strings.TrimPrefix(line, "__OUT__:")
+			var value any
+			if err := json.Unmarshal([]byte(jsonStr), &value); err == nil {
+				return value
+			}
+			return jsonStr
+		}
+		if strings.HasPrefix(line, "{") && strings.HasSuffix(line, "}") {
+			var payload map[string]any
+			if err := json.Unmarshal([]byte(line), &payload); err == nil {
+				if value, ok := payload["__out"]; ok {
+					return value
+				}
+			}
+		}
+	}
 	return nil
 }
 

@@ -121,18 +121,24 @@ It handles tool execution, code orchestration, and runtime isolation.
 
 ### Runtime Backend Matrix
 
-| BackendKind | Isolation | Requirements | Notes |
-|-------------|-----------|--------------|-------|
-| `BackendUnsafeHost` | None | Go toolchain (subprocess mode) | Dev-only, explicit opt-in supported |
-| `BackendDocker` | Container | Docker daemon + ContainerRunner | Standard isolation |
-| `BackendContainerd` | Container | containerd client | Infrastructure-native |
-| `BackendKubernetes` | Pod/Job | kubeconfig/client | Cluster execution |
-| `BackendGVisor` | Sandbox | gVisor/runsc | Stronger isolation |
-| `BackendKata` | VM | Kata runtime | VM-level isolation |
-| `BackendFirecracker` | MicroVM | Firecracker runtime | Strongest isolation |
-| `BackendWASM` | Sandbox | wazero | In-process WASM |
-| `BackendTemporal` | Workflow | Temporal client | Orchestrated execution |
-| `BackendRemote` | Remote | HTTP/gRPC service | External runtime |
+Readiness tiers:
+- **prod**: production-ready
+- **beta**: usable, still evolving
+- **stub**: placeholder or incomplete
+
+| BackendKind | Readiness | Isolation | Requirements | Notes |
+|-------------|-----------|-----------|--------------|-------|
+| `BackendUnsafeHost` | prod | None | Go toolchain (subprocess mode) | Dev-only, explicit opt-in supported |
+| `BackendDocker` | prod | Container | Docker daemon + ContainerRunner | Standard isolation |
+| `BackendContainerd` | beta | Container | containerd client | Infrastructure-native |
+| `BackendKubernetes` | beta | Pod/Job | kubeconfig/client | Cluster execution |
+| `BackendGVisor` | beta | Sandbox | gVisor/runsc | Stronger isolation |
+| `BackendKata` | beta | VM | Kata runtime | VM-level isolation |
+| `BackendFirecracker` | beta | MicroVM | Firecracker runtime | Strongest isolation |
+| `BackendWASM` | beta | Sandbox | wazero | In-process WASM |
+| `BackendTemporal` | stub | Workflow | Temporal client | Orchestrated execution |
+| `BackendRemote` | beta | Remote | HTTP service | External runtime with signed requests |
+| `BackendProxmoxLXC` | beta | Container | Proxmox API + runtime service | LXC-backed runtime service |
 
 ## Toolcode ↔ Runtime Contract
 

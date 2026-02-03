@@ -1,4 +1,4 @@
-package kubernetes
+package proxmox
 
 import (
 	"context"
@@ -18,18 +18,8 @@ func TestBackendImplementsInterface(t *testing.T) {
 
 func TestBackendKind(t *testing.T) {
 	b := New(Config{})
-	if b.Kind() != runtime.BackendKubernetes {
-		t.Errorf("Kind() = %v, want %v", b.Kind(), runtime.BackendKubernetes)
-	}
-}
-
-func TestBackendDefaults(t *testing.T) {
-	b := New(Config{})
-	if b.namespace != "default" {
-		t.Errorf("namespace = %q, want %q", b.namespace, "default")
-	}
-	if b.image != "toolruntime-sandbox:latest" {
-		t.Errorf("image = %q, want %q", b.image, "toolruntime-sandbox:latest")
+	if b.Kind() != runtime.BackendProxmoxLXC {
+		t.Errorf("Kind() = %v, want %v", b.Kind(), runtime.BackendProxmoxLXC)
 	}
 }
 
@@ -67,8 +57,25 @@ func (m *mockGateway) RunChain(_ context.Context, _ []run.ChainStep) (run.RunRes
 	return run.RunResult{}, nil, nil
 }
 
+func TestBackendRequiresRuntimeEndpoint(t *testing.T) {
+	b := New(Config{Node: "node-1", VMID: 100})
+	ctx := context.Background()
+	req := runtime.ExecuteRequest{
+		Code:    "test",
+		Gateway: &mockGateway{},
+	}
+	_, err := b.Execute(ctx, req)
+	if !errors.Is(err, ErrRuntimeNotConfigured) {
+		t.Errorf("Execute() missing runtime endpoint error = %v, want %v", err, ErrRuntimeNotConfigured)
+	}
+}
+
 func TestBackendRequiresClient(t *testing.T) {
-	b := New(Config{})
+	b := New(Config{
+		Node:            "node-1",
+		VMID:            100,
+		RuntimeEndpoint: "http://runtime",
+	})
 	ctx := context.Background()
 	req := runtime.ExecuteRequest{
 		Code:    "test",
@@ -76,6 +83,6 @@ func TestBackendRequiresClient(t *testing.T) {
 	}
 	_, err := b.Execute(ctx, req)
 	if !errors.Is(err, ErrClientNotConfigured) {
-		t.Errorf("Execute() without client error = %v, want %v", err, ErrClientNotConfigured)
+		t.Errorf("Execute() missing client error = %v, want %v", err, ErrClientNotConfigured)
 	}
 }

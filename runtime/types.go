@@ -82,6 +82,22 @@ const (
 	// BackendRemote executes code on a remote runtime service.
 	// Generic target for dedicated runtime services, batch systems, or job runners.
 	BackendRemote BackendKind = "remote"
+
+	// BackendProxmoxLXC executes code in a Proxmox LXC container.
+	// Requires a runtime service inside the container.
+	BackendProxmoxLXC BackendKind = "proxmox_lxc"
+)
+
+// BackendReadiness indicates the maturity of a backend implementation.
+type BackendReadiness string
+
+const (
+	// ReadinessProd indicates production-ready support.
+	ReadinessProd BackendReadiness = "prod"
+	// ReadinessBeta indicates usable but still evolving support.
+	ReadinessBeta BackendReadiness = "beta"
+	// ReadinessStub indicates placeholder or incomplete support.
+	ReadinessStub BackendReadiness = "stub"
 )
 
 // Limits specifies resource limits for execution.
@@ -249,6 +265,9 @@ type ToolCallRecord struct {
 type BackendInfo struct {
 	// Kind identifies the type of backend.
 	Kind BackendKind
+
+	// Readiness indicates the maturity tier of the backend.
+	Readiness BackendReadiness
 
 	// Details contains backend-specific information.
 	Details map[string]any

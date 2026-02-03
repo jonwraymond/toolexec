@@ -129,7 +129,8 @@ func (b *Backend) Execute(_ context.Context, req runtime.ExecuteRequest) (runtim
 	result := runtime.ExecuteResult{
 		Duration: time.Since(start),
 		Backend: runtime.BackendInfo{
-			Kind: runtime.BackendTemporal,
+			Kind:      runtime.BackendTemporal,
+			Readiness: runtime.ReadinessStub,
 			Details: map[string]any{
 				"namespace":      b.namespace,
 				"taskQueue":      b.taskQueue,

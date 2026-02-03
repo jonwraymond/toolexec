@@ -99,10 +99,12 @@ func TestAggregator_ParseToolID(t *testing.T) {
 	}{
 		{"local:echo", "local", "echo", false},
 		{"github:create_issue", "github", "create_issue", false},
+		{"github:create_issue:1.0.0", "github", "create_issue:1.0.0", false},
 		{"my-backend:my_tool", "my-backend", "my_tool", false},
 		{"no_namespace", "", "no_namespace", false},
 		{"", "", "", true},
-		{"bad:format:tool", "", "", true},
+		{"bad:format:tool", "bad", "format:tool", false},
+		{"too:many:colons:here", "", "", true},
 	}
 
 	for _, tt := range tests {
@@ -128,6 +130,7 @@ func TestFormatToolID(t *testing.T) {
 	}{
 		{"local", "echo", "local:echo"},
 		{"github", "create_issue", "github:create_issue"},
+		{"github", "create_issue:1.0.0", "github:create_issue:1.0.0"},
 		{"", "tool", "tool"},
 	}
 
