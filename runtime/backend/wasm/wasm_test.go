@@ -3,6 +3,7 @@ package wasm
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -117,6 +118,33 @@ func TestBackendHealthCheckFailure(t *testing.T) {
 	if !errors.Is(err, ErrWASMRuntimeNotAvailable) {
 		t.Errorf("Execute() with health check failure error = %v, want %v", err, ErrWASMRuntimeNotAvailable)
 	}
+}
+
+func TestExtractOutValue(t *testing.T) {
+	t.Run("prefix format", func(t *testing.T) {
+		stdout := "hello\n__OUT__:{\"ok\":true,\"count\":2}\n"
+		got := extractOutValue(stdout)
+		want := map[string]any{"ok": true, "count": float64(2)}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("extractOutValue() = %#v, want %#v", got, want)
+		}
+	})
+
+	t.Run("json payload format", func(t *testing.T) {
+		stdout := "log line\n{\"__out\":\"done\"}\n"
+		got := extractOutValue(stdout)
+		if got != "done" {
+			t.Fatalf("extractOutValue() = %#v, want %q", got, "done")
+		}
+	})
+
+	t.Run("no output", func(t *testing.T) {
+		stdout := "just logs\nanother line\n"
+		got := extractOutValue(stdout)
+		if got != nil {
+			t.Fatalf("extractOutValue() = %#v, want nil", got)
+		}
+	})
 }
 
 func TestBackendContextCancellation(t *testing.T) {

@@ -155,13 +155,3 @@ func (b *SpecBuilder) Build() (ContainerSpec, error) {
 	}
 	return b.spec, nil
 }
-
-// MustBuild validates and returns the ContainerSpec, panicking on error.
-// Use only in tests or when the spec is known to be valid.
-func (b *SpecBuilder) MustBuild() ContainerSpec {
-	spec, err := b.Build()
-	if err != nil {
-		panic(err)
-	}
-	return spec
-}
